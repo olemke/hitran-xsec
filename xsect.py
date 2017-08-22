@@ -99,7 +99,7 @@ def plot_xsect(ax, xsect, **kwargs):
 
     if 'label' not in kwargs:
         kwargs[
-            'label'] = f"{xsect['temperature']:.0f} K, {xsect['pressure']/100:.0f} hPa"
+            'label'] = f"{xsect['temperature']:.0f} K, {xsect['pressure']:.0f} Pa"
 
     ax.plot(fgrid, xsect['data'], **kwargs)
 
@@ -154,7 +154,7 @@ def calc_xsect_rms(xsect1, xsect2):
             xsect2['data']))))
 
 
-def optimize_xsect(xsect_low, xsect_high):
+def optimize_xsect(xsect_low, xsect_high, title):
     xsects = {
         'low': xsect_low,
         'high': xsect_high,
@@ -192,7 +192,8 @@ def optimize_xsect(xsect_low, xsect_high):
                                 xsects['high_interp'])
 
     rms_min = numpy.min(rms)
-    rms_min_n = numpy.argmin(rms) + npoints_min
+    rms_min_i = numpy.argmin(rms)
+    rms_min_n = npoints_arr[numpy.argmin(rms)]
     # first_local_min = scipy.signal.argrelmin(rms)[0][0]
     # rms_min = rms[first_local_min]
     # rms_min_n = first_local_min + npoints_min
@@ -201,17 +202,26 @@ def optimize_xsect(xsect_low, xsect_high):
         print(f"Skipping plotting: {xsect_high}")
     else:
         fig, ax = plt.subplots()
+        width_vec = typhon.physics.wavenumber2frequency(
+               2 * numpy.arange(npoints_min, npoints_max, step)
+               * (xsects['low']['fmax'] - xsects['low']['fmin'])
+               / xsects['low']['nfreq'] * 100) / float(20) / 1e9
+
         if rms_min_n < rms.size:
-            ax.plot((rms_min_n, rms_min_n), (numpy.min(rms), numpy.max(rms)),
+            ax.plot((width_vec[rms_min_i], width_vec[rms_min_i]), (numpy.min(rms), numpy.max(rms)),
                     linewidth=1,
-                    label=f'RMS Minimum {rms_min:.2e}@{npoints_arr[rms_min_n]}')
-        ax.plot(range(npoints_min, npoints_max, step), rms,
-                label=f"RMS T1: {xsects['low']['temperature']:.1f}K P1: {xsects['low']['pressure']:.0f}P T2: {xsects['high']['temperature']:.1f}K P2: {xsects['high']['pressure']:.0f}P",
+                    label=f'Minimum {rms_min:.2e}@{width_vec[rms_min_i]:1.2g} GHz')
+        #ax.plot(range(npoints_min, npoints_max, step), rms,
+        ax.plot(width_vec, rms,
+                label=f"T1: {xsects['low']['temperature']:.1f}K P1: {xsects['low']['pressure']:.0f}P f: {xsects['low']['fmin']:1.0f}-{xsects['low']['fmax']:1.0f}\nT2: {xsects['high']['temperature']:.1f}K P2: {xsects['high']['pressure']:.0f}P f: {xsects['high']['fmin']:1.0f}-{xsects['high']['fmax']:1.0f}",
                 linewidth=0.5)
 
-        ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%.2e'))
+        ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
         # ax.set_xlim(npoints_min, npoints_max)
-        ax.legend()
+        ax.legend(loc=1)
+        ax.set_ylabel('RMS')
+        ax.set_xlabel('FWHM of Lorentz filter [GHz]')
+        ax.set_title(title)
 
         # ax.set_ylim(1e-6, 9e-6)
         fig.savefig(fname)
@@ -219,7 +229,7 @@ def optimize_xsect(xsect_low, xsect_high):
 
         fig, ax = plt.subplots()
 
-        linewidth = 1
+        linewidth = 0.1
         # Plot xsect at low pressure
         plot_xsect(ax, xsects['low'], linewidth=linewidth)
 
@@ -227,12 +237,13 @@ def optimize_xsect(xsect_low, xsect_high):
         npoints = rms_min_n
         xsects['conv'] = xsect_convolve(xsects['low'], npoints, run_lorentz)
         plot_xsect(ax, xsects['conv'], linewidth=linewidth,
-                   label=f'npoints {npoints}')
+                   label=f'Lorentz FWHM {width_vec[rms_min_i]:1.2g} GHz')
 
         # Plot xsect at high pressure
         plot_xsect(ax, xsects['high'], linewidth=linewidth)
 
-        ax.legend()
+        ax.legend(loc=1)
+        ax.set_title(title)
 
         fname = f"{xsects['low']['longname']}_{xsects['low']['fmin']:.0f}-{xsects['low']['fmax']:.0f}_{xsects['low']['temperature']:.1f}K_{xsects['low']['pressure']:.0f}P_{xsects['high']['temperature']:.1f}K_{xsects['high']['pressure']:.0f}P_{npoints}_xsec.pdf"
         fig.savefig(fname)
@@ -268,7 +279,7 @@ def get_cfc11_inputs():
     for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 272):
         for freq in (810, 1050):
             xsects_sel = xsect_select(xsects, freq, 10, temperature, 2)
-            for t in ((xsects_sel[0], x2) for x2 in xsects_sel[1:]):
+            for t in ((xsects_sel[0], x2, 'CFC-11') for x2 in xsects_sel[1:]):
                 inputs.append(t)
     return inputs
 
@@ -280,7 +291,7 @@ def get_cfc12_inputs():
     for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 268, 272):
         for freq in (800, 850, 1050):
             xsects_sel = xsect_select(xsects, freq, 10, temperature, 2)
-            for t in ((xsects_sel[0], x2) for x2 in xsects_sel[1:]):
+            for t in ((xsects_sel[0], x2, 'CFC-12') for x2 in xsects_sel[1:]):
                 inputs.append(t)
     return inputs
 

@@ -14,8 +14,8 @@ def scatter_plot(ax, xsect_result, hwhm, title, **kwargs):
     if kwargs is None:
         kwargs = {}
     width_vec = numpy.array(
-        [2 * typhon.physics.wavenumber2frequency(
-            r['optimum_width']
+        [typhon.physics.wavenumber2frequency(
+            2 * r['optimum_width']
             * (r['fmax'] - r['fmin'])
             / r['nfreq'] * 100) / float(hwhm) / 1e9 for r in
          # [r['optimum_width'] for r in
