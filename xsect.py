@@ -117,9 +117,11 @@ def lorentz_pdf(x, x0, gamma):
 
 
 def run_lorentz(npoints):
-    return lorentz_pdf(numpy.linspace(0, npoints, npoints),
-                       npoints / 2,
-                       npoints / 20)
+    ret = lorentz_pdf(numpy.linspace(0, npoints, npoints),
+                      npoints / 2,
+                      npoints / 20)
+    ret /= numpy.sum(ret)
+    return ret
 
 
 def xsect_convolve(xsect1, width, convfunc):
@@ -203,15 +205,16 @@ def optimize_xsect(xsect_low, xsect_high, title):
     else:
         fig, ax = plt.subplots()
         width_vec = typhon.physics.wavenumber2frequency(
-               2 * numpy.arange(npoints_min, npoints_max, step)
-               * (xsects['low']['fmax'] - xsects['low']['fmin'])
-               / xsects['low']['nfreq'] * 100) / float(20) / 1e9
+            2 * numpy.arange(npoints_min, npoints_max, step)
+            * (xsects['low']['fmax'] - xsects['low']['fmin'])
+            / xsects['low']['nfreq'] * 100) / float(20) / 1e9
 
         if rms_min_n < rms.size:
-            ax.plot((width_vec[rms_min_i], width_vec[rms_min_i]), (numpy.min(rms), numpy.max(rms)),
+            ax.plot((width_vec[rms_min_i], width_vec[rms_min_i]),
+                    (numpy.min(rms), numpy.max(rms)),
                     linewidth=1,
                     label=f'Minimum {rms_min:.2e}@{width_vec[rms_min_i]:1.2g} GHz')
-        #ax.plot(range(npoints_min, npoints_max, step), rms,
+        # ax.plot(range(npoints_min, npoints_max, step), rms,
         ax.plot(width_vec, rms,
                 label=f"T1: {xsects['low']['temperature']:.1f}K P1: {xsects['low']['pressure']:.0f}P f: {xsects['low']['fmin']:1.0f}-{xsects['low']['fmax']:1.0f}\nT2: {xsects['high']['temperature']:.1f}K P2: {xsects['high']['pressure']:.0f}P f: {xsects['high']['fmin']:1.0f}-{xsects['high']['fmax']:1.0f}",
                 linewidth=0.5)
@@ -229,9 +232,12 @@ def optimize_xsect(xsect_low, xsect_high, title):
 
         fig, ax = plt.subplots()
 
-        linewidth = 0.1
+        linewidth = 0.5
         # Plot xsect at low pressure
         plot_xsect(ax, xsects['low'], linewidth=linewidth)
+
+        # Plot xsect at high pressure
+        plot_xsect(ax, xsects['high'], linewidth=linewidth)
 
         # Plot convoluted xsect
         npoints = rms_min_n
@@ -239,8 +245,6 @@ def optimize_xsect(xsect_low, xsect_high, title):
         plot_xsect(ax, xsects['conv'], linewidth=linewidth,
                    label=f'Lorentz FWHM {width_vec[rms_min_i]:1.2g} GHz')
 
-        # Plot xsect at high pressure
-        plot_xsect(ax, xsects['high'], linewidth=linewidth)
 
         ax.legend(loc=1)
         ax.set_title(title)
