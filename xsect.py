@@ -1,3 +1,4 @@
+import functools
 import glob
 import json
 import multiprocessing as mp
@@ -156,7 +157,7 @@ def calc_xsect_rms(xsect1, xsect2):
             xsect2['data']))))
 
 
-def optimize_xsect(xsect_low, xsect_high, title):
+def optimize_xsect(xsect_low, xsect_high, title, outdir=''):
     xsects = {
         'low': xsect_low,
         'high': xsect_high,
@@ -167,6 +168,7 @@ def optimize_xsect(xsect_low, xsect_high, title):
     step = 1
 
     fname = f"{xsects['low']['longname']}_{xsects['low']['fmin']:.0f}-{xsects['low']['fmax']:.0f}_{xsects['low']['temperature']:.1f}K_{xsects['low']['pressure']:.0f}P_{xsects['high']['temperature']:.1f}K_{xsects['high']['pressure']:.0f}P_{npoints_max}_rms.pdf"
+    fname = os.path.join(outdir, fname)
 
     rms = numpy.zeros(((npoints_max - npoints_min) // step,))
     npoints_arr = range(npoints_min, npoints_max, step)
@@ -249,10 +251,9 @@ def optimize_xsect(xsect_low, xsect_high, title):
         ax.set_title(title)
 
         fname = f"{xsects['low']['longname']}_{xsects['low']['fmin']:.0f}-{xsects['low']['fmax']:.0f}_{xsects['low']['temperature']:.1f}K_{xsects['low']['pressure']:.0f}P_{xsects['high']['temperature']:.1f}K_{xsects['high']['pressure']:.0f}P_{npoints}_xsec.pdf"
+        fname = os.path.join(outdir, fname)
         fig.savefig(fname)
         print(f'File saved: {fname}')
-
-    # print(f"{xsect_high} done")
 
     return {
         'source_pressure': float(xsects['low']['pressure']),
@@ -302,21 +303,26 @@ def get_cfc12_inputs():
 def main():
     p = mp.Pool()
 
-    if len(sys.argv) > 1 and sys.argv[1] == 'cfc11':
+    if len(sys.argv) > 2 and sys.argv[1] == 'cfc11':
         inputs = get_cfc11_inputs()
-    elif len(sys.argv) > 1 and sys.argv[1] == 'cfc12':
+    elif len(sys.argv) > 2 and sys.argv[1] == 'cfc12':
         inputs = get_cfc12_inputs()
     else:
-        print(f'Usage: {sys.argv[0]} SPECIES')
+        print(f'Usage: {sys.argv[0]} SPECIES OUTDIR')
+        print(f'  SPECIES: cfc11 or cfc12')
         sys.exit(1)
+
+    outdir = sys.argv[2]
+    os.mkdir(outdir)
 
     # for i in inputs:
     # print(f"{i[0]['header']}{i[1]['header']}")
-    res = [p.apply_async(optimize_xsect, args) for args in inputs]
+    optimize_xsect_partial = functools.partial(optimize_xsect, outdir=outdir)
+    res = [p.apply_async(optimize_xsect_partial, args) for args in inputs]
     results = [r.get() for r in res if r]
     print(f'{len(results)} calculations')
 
-    with open('output.txt', 'w') as f:
+    with open(os.path.join(outdir, 'output.txt'), 'w') as f:
         json.dump(results, f)
 
 
