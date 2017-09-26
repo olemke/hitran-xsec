@@ -7,7 +7,7 @@ import sys
 import matplotlib as mpl
 import numpy
 
-mpl.use('Agg')
+mpl.use('Agg')  # noqa
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
@@ -98,10 +98,10 @@ def plot_xsect(ax, xsect, **kwargs):
         kwargs = {}
 
     if 'label' not in kwargs:
-        kwargs[
-            'label'] = f"{xsect['temperature']:.0f} K, {xsect['pressure']:.0f} Pa"
+        kwargs['label'] = (f"{xsect['temperature']:.0f} K,"
+                           f"{xsect['pressure']:.0f} Pa")
 
-    ax.plot(fgrid, xsect['data'], **kwargs)
+        ax.plot(fgrid, xsect['data'], **kwargs)
 
 
 def run_mean(npoints):
@@ -245,7 +245,6 @@ def optimize_xsect(xsect_low, xsect_high, title):
         plot_xsect(ax, xsects['conv'], linewidth=linewidth,
                    label=f'Lorentz FWHM {width_vec[rms_min_i]:1.2g} GHz')
 
-
         ax.legend(loc=1)
         ax.set_title(title)
 
@@ -300,7 +299,7 @@ def get_cfc12_inputs():
     return inputs
 
 
-if __name__ == '__main__':
+def main():
     p = mp.Pool()
 
     if len(sys.argv) > 1 and sys.argv[1] == 'cfc11':
@@ -308,7 +307,8 @@ if __name__ == '__main__':
     elif len(sys.argv) > 1 and sys.argv[1] == 'cfc12':
         inputs = get_cfc12_inputs()
     else:
-        raise RuntimeError('Unknown species')
+        print(f'Usage: {sys.argv[0]} SPECIES')
+        sys.exit(1)
 
     # for i in inputs:
     # print(f"{i[0]['header']}{i[1]['header']}")
@@ -318,3 +318,7 @@ if __name__ == '__main__':
 
     with open('output.txt', 'w') as f:
         json.dump(results, f)
+
+
+if __name__ == '__main__':
+    main()
