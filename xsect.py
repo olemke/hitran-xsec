@@ -54,7 +54,7 @@ def hitran_raw_xsec_to_dict(header, data):
     return xsec_dict
 
 
-def read_hitran_xsect(filename):
+def read_hitran_xsec(filename):
     with open(filename) as f:
         header = f.readline()
         data = numpy.hstack(
@@ -67,7 +67,7 @@ def torr_to_pascal(torr):
     return torr * 101325 / 760
 
 
-def plot_available_xsects():
+def plot_available_xsecs():
     files = 'cfc11/*.xsc'
     data = {}
 
@@ -92,17 +92,17 @@ def plot_available_xsects():
     plt.savefig('available.pdf')
 
 
-def plot_xsect(ax, xsect, **kwargs):
-    fgrid = numpy.linspace(xsect['fmin'], xsect['fmax'], xsect['nfreq'])
+def plot_xsec(ax, xsec, **kwargs):
+    fgrid = numpy.linspace(xsec['fmin'], xsec['fmax'], xsec['nfreq'])
 
     if kwargs is None:
         kwargs = {}
 
     if 'label' not in kwargs:
-        kwargs['label'] = (f"{xsect['temperature']:.0f} K,"
-                           f"{xsect['pressure']:.0f} Pa")
+        kwargs['label'] = (f"{xsec['temperature']:.0f} K,"
+                           f"{xsec['pressure']:.0f} Pa")
 
-        ax.plot(fgrid, xsect['data'], **kwargs)
+        ax.plot(fgrid, xsec['data'], **kwargs)
 
 
 def run_mean(npoints):
@@ -125,75 +125,81 @@ def run_lorentz(npoints):
     return ret
 
 
-def xsect_convolve(xsect1, width, convfunc):
+def xsec_convolve(xsec1, width, convfunc):
     conv_f = convfunc(width)
-    xsect_extended = numpy.hstack(
-        (numpy.ones((width // 2,)) * xsect1['data'][0],
-         xsect1['data'],
-         numpy.ones(((width + 1) // 2 - 1,)) * xsect1['data'][-1]))
-    xsect_conv = xsect1.copy()
-    xsect_conv['data'] = numpy.convolve(xsect_extended, conv_f, 'valid')
-    return xsect_conv
+    xsec_extended = numpy.hstack(
+        (numpy.ones((width // 2,)) * xsec1['data'][0],
+         xsec1['data'],
+         numpy.ones(((width + 1) // 2 - 1,)) * xsec1['data'][-1]))
+    xsec_conv = xsec1.copy()
+    xsec_conv['data'] = numpy.convolve(xsec_extended, conv_f, 'valid')
+    return xsec_conv
 
 
-def calc_xsect_std(xsect1, xsect2):
+def calc_xsec_std(xsec1, xsec2):
     return numpy.std(
-        xsect1['data'] / numpy.sum(xsect1['data']) - xsect2['data'] / numpy.sum(
-            xsect2['data']))
+        xsec1['data'] / numpy.sum(xsec1['data']) - xsec2['data'] / numpy.sum(
+            xsec2['data']))
 
 
-def calc_xsect_log_rms(xsect1, xsect2):
-    data1log = numpy.log(xsect1['data'])
+def calc_xsec_log_rms(xsec1, xsec2):
+    data1log = numpy.log(xsec1['data'])
     data1log[numpy.isinf(data1log)] = 0
-    data2log = numpy.log(xsect2['data'])
+    data2log = numpy.log(xsec2['data'])
     data2log[numpy.isinf(data2log)] = 0
     return numpy.sqrt(numpy.mean(numpy.square(
         data1log / numpy.sum(data1log) - data2log / numpy.sum(data2log))))
 
 
-def calc_xsect_rms(xsect1, xsect2):
+def calc_xsec_rms(xsec1, xsec2):
     return numpy.sqrt(numpy.mean(numpy.square(
-        xsect1['data'] / numpy.sum(xsect1['data']) - xsect2['data'] / numpy.sum(
-            xsect2['data']))))
+        xsec1['data'] / numpy.sum(xsec1['data']) - xsec2['data'] / numpy.sum(
+            xsec2['data']))))
 
 
-def optimize_xsect(xsect_low, xsect_high, title, outdir=''):
-    xsects = {
-        'low': xsect_low,
-        'high': xsect_high,
+def optimize_xsec(xsec_low, xsec_high, title, outdir='', do_plots=False):
+    xsecs = {
+        'low': xsec_low,
+        'high': xsec_high,
     }
 
     npoints_min = 1
     npoints_max = 1000
     step = 1
 
-    fname = f"{xsects['low']['longname']}_{xsects['low']['fmin']:.0f}-{xsects['low']['fmax']:.0f}_{xsects['low']['temperature']:.1f}K_{xsects['low']['pressure']:.0f}P_{xsects['high']['temperature']:.1f}K_{xsects['high']['pressure']:.0f}P_{npoints_max}_rms.pdf"
-    fname = os.path.join(outdir, fname)
+    xsec_name = (
+        f"{xsecs['low']['longname']}_{xsecs['low']['fmin']:.0f}"
+        f"-{xsecs['low']['fmax']:.0f}_{xsecs['low']['temperature']:.1f}K_"
+        f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
+        f"{xsecs['high']['pressure']:.0f}P_{npoints_max}")
+    print(f"Calc {xsec_name}")
 
     rms = numpy.zeros(((npoints_max - npoints_min) // step,))
     npoints_arr = range(npoints_min, npoints_max, step)
 
-    fgrid_conv = numpy.linspace(xsects['low']['fmin'],
-                                xsects['low']['fmax'],
-                                xsects['low']['nfreq'])
+    fgrid_conv = numpy.linspace(xsecs['low']['fmin'],
+                                xsecs['low']['fmax'],
+                                xsecs['low']['nfreq'])
 
-    fgrid_high = numpy.linspace(xsects['high']['fmin'],
-                                xsects['high']['fmax'],
-                                xsects['high']['nfreq'])
-    if len(xsects['high']['data']) != len(fgrid_high):
-        print(
-            f"Size mismatch in data (skipping): nfreq: {xsects['high']['nfreq']} datasize: {len(xsects['high']['data'])} header: {xsects['high']['header']}")
+    fgrid_high = numpy.linspace(xsecs['high']['fmin'],
+                                xsecs['high']['fmax'],
+                                xsecs['high']['nfreq'])
+    if len(xsecs['high']['data']) != len(fgrid_high):
+        print(f"Size mismatch in data (skipping): nfreq: "
+              f"{xsecs['high']['nfreq']} "
+              f"datasize: {len(xsecs['high']['data'])} "
+              f"header: {xsecs['high']['header']}")
         return {}
 
     for i, npoints in enumerate(npoints_arr):
-        xsects['conv'] = xsect_convolve(xsects['low'], npoints, run_lorentz)
+        xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
 
-        xsects['high_interp'] = xsects['conv'].copy()
-        xsects['high_interp']['data'] = numpy.interp(fgrid_conv, fgrid_high,
-                                                     xsects['high']['data'])
+        xsecs['high_interp'] = xsecs['conv'].copy()
+        xsecs['high_interp']['data'] = numpy.interp(fgrid_conv, fgrid_high,
+                                                    xsecs['high']['data'])
 
-        rms[i] = calc_xsect_rms(xsects['conv'],
-                                xsects['high_interp'])
+        rms[i] = calc_xsec_rms(xsecs['conv'],
+                               xsecs['high_interp'])
 
     rms_min = numpy.min(rms)
     rms_min_i = numpy.argmin(rms)
@@ -202,23 +208,37 @@ def optimize_xsect(xsect_low, xsect_high, title, outdir=''):
     # rms_min = rms[first_local_min]
     # rms_min_n = first_local_min + npoints_min
 
-    if os.path.exists(fname):
-        print(f"Skipping plotting: {xsect_high}")
+    print(f"Done {xsec_name}")
+
+    fname = f"{xsec_name}_rms.pdf"
+    fname = os.path.join(outdir, fname)
+
+    if not do_plots:
+        pass
+    elif os.path.exists(fname):
+        print(f"Skipping plotting: {xsec_high}")
     else:
         fig, ax = plt.subplots()
-        width_vec = typhon.physics.wavenumber2frequency(
+        fwhm = typhon.physics.wavenumber2frequency(
             2 * numpy.arange(npoints_min, npoints_max, step)
-            * (xsects['low']['fmax'] - xsects['low']['fmin'])
-            / xsects['low']['nfreq'] * 100) / float(20) / 1e9
+            * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
+            / xsecs['low']['nfreq'] * 100) / float(20) / 1e9
 
         if rms_min_n < rms.size:
-            ax.plot((width_vec[rms_min_i], width_vec[rms_min_i]),
+            ax.plot((fwhm[rms_min_i], fwhm[rms_min_i]),
                     (numpy.min(rms), numpy.max(rms)),
                     linewidth=1,
-                    label=f'Minimum {rms_min:.2e}@{width_vec[rms_min_i]:1.2g} GHz')
+                    label=f'Minimum {rms_min:.2e}@{fwhm[rms_min_i]:1.2g} GHz')
         # ax.plot(range(npoints_min, npoints_max, step), rms,
-        ax.plot(width_vec, rms,
-                label=f"T1: {xsects['low']['temperature']:.1f}K P1: {xsects['low']['pressure']:.0f}P f: {xsects['low']['fmin']:1.0f}-{xsects['low']['fmax']:1.0f}\nT2: {xsects['high']['temperature']:.1f}K P2: {xsects['high']['pressure']:.0f}P f: {xsects['high']['fmin']:1.0f}-{xsects['high']['fmax']:1.0f}",
+        ax.plot(fwhm, rms,
+                label=f"T1: {xsecs['low']['temperature']:.1f}K "
+                      f"P1: {xsecs['low']['pressure']:.0f}P "
+                      f"f: {xsecs['low']['fmin']:1.0f}"
+                      f"-{xsecs['low']['fmax']:1.0f}\n"
+                      f"T2: {xsecs['high']['temperature']:.1f}K "
+                      f"P2: {xsecs['high']['pressure']:.0f}P "
+                      f"f: {xsecs['high']['fmin']:1.0f}"
+                      f"-{xsecs['high']['fmax']:1.0f}",
                 linewidth=0.5)
 
         ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
@@ -235,67 +255,67 @@ def optimize_xsect(xsect_low, xsect_high, title, outdir=''):
         fig, ax = plt.subplots()
 
         linewidth = 0.5
-        # Plot xsect at low pressure
-        plot_xsect(ax, xsects['low'], linewidth=linewidth)
+        # Plot xsec at low pressure
+        plot_xsec(ax, xsecs['low'], linewidth=linewidth)
 
-        # Plot xsect at high pressure
-        plot_xsect(ax, xsects['high'], linewidth=linewidth)
+        # Plot xsec at high pressure
+        plot_xsec(ax, xsecs['high'], linewidth=linewidth)
 
-        # Plot convoluted xsect
+        # Plot convoluted xsec
         npoints = rms_min_n
-        xsects['conv'] = xsect_convolve(xsects['low'], npoints, run_lorentz)
-        plot_xsect(ax, xsects['conv'], linewidth=linewidth,
-                   label=f'Lorentz FWHM {width_vec[rms_min_i]:1.2g} GHz')
+        xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
+        plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
+                  label=f'Lorentz FWHM {fwhm[rms_min_i]:1.2g} GHz')
 
         ax.legend(loc=1)
         ax.set_title(title)
 
-        fname = f"{xsects['low']['longname']}_{xsects['low']['fmin']:.0f}-{xsects['low']['fmax']:.0f}_{xsects['low']['temperature']:.1f}K_{xsects['low']['pressure']:.0f}P_{xsects['high']['temperature']:.1f}K_{xsects['high']['pressure']:.0f}P_{npoints}_xsec.pdf"
+        fname = f"{xsec_name}_xsec.pdf"
         fname = os.path.join(outdir, fname)
         fig.savefig(fname)
         print(f'File saved: {fname}')
 
     return {
-        'source_pressure': float(xsects['low']['pressure']),
-        'target_pressure': float(xsects['high']['pressure']),
-        'source_temp': float(xsects['low']['temperature']),
-        'target_temp': float(xsects['high']['temperature']),
-        'fmin': float(xsects['low']['fmin']),
-        'fmax': float(xsects['low']['fmax']),
-        'nfreq': int(xsects['low']['nfreq']),
+        'source_pressure': float(xsecs['low']['pressure']),
+        'target_pressure': float(xsecs['high']['pressure']),
+        'source_temp': float(xsecs['low']['temperature']),
+        'target_temp': float(xsecs['high']['temperature']),
+        'fmin': float(xsecs['low']['fmin']),
+        'fmax': float(xsecs['low']['fmax']),
+        'nfreq': int(xsecs['low']['nfreq']),
         'optimum_width': int(rms_min_n),
         'rms_min': float(rms_min),
     }
 
 
-def xsect_select(xsects, freq, freq_epsilon, temp, temp_epsilon):
-    xsect_sel = [x for x in xsects if
-                 numpy.abs(x['fmin'] - freq) < freq_epsilon and numpy.abs(
-                     x['temperature'] - temp) < temp_epsilon]
+def xsec_select(xsecs, freq, freq_epsilon, temp, temp_epsilon):
+    xsec_sel = [x for x in xsecs if
+                numpy.abs(x['fmin'] - freq) < freq_epsilon and numpy.abs(
+                    x['temperature'] - temp) < temp_epsilon]
 
-    return sorted(xsect_sel, key=lambda xsect: xsect['pressure'])
+    return sorted(xsec_sel, key=lambda xsec: xsec['pressure'])
 
 
 def get_cfc11_inputs():
     infiles = glob.glob('cfc11/*00.xsc')
-    xsects = [read_hitran_xsect(f) for f in infiles]
+    xsecs = [read_hitran_xsec(f) for f in infiles]
     inputs = []
     for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 272):
         for freq in (810, 1050):
-            xsects_sel = xsect_select(xsects, freq, 10, temperature, 2)
-            for t in ((xsects_sel[0], x2, 'CFC-11') for x2 in xsects_sel[1:]):
+            xsecs_sel = xsec_select(xsecs, freq, 10, temperature, 2)
+            for t in ((xsecs_sel[0], x2, 'CFC-11') for x2 in xsecs_sel[1:]):
                 inputs.append(t)
     return inputs
 
 
 def get_cfc12_inputs():
     infiles = glob.glob('cfc12/*00.xsc')
-    xsects = [read_hitran_xsect(f) for f in infiles]
+    xsecs = [read_hitran_xsec(f) for f in infiles]
     inputs = []
     for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 268, 272):
         for freq in (800, 850, 1050):
-            xsects_sel = xsect_select(xsects, freq, 10, temperature, 2)
-            for t in ((xsects_sel[0], x2, 'CFC-12') for x2 in xsects_sel[1:]):
+            xsecs_sel = xsec_select(xsecs, freq, 10, temperature, 2)
+            for t in ((xsecs_sel[0], x2, 'CFC-12') for x2 in xsecs_sel[1:]):
                 inputs.append(t)
     return inputs
 
@@ -313,12 +333,12 @@ def main():
         sys.exit(1)
 
     outdir = sys.argv[2]
-    os.mkdir(outdir)
+    os.makedirs(outdir, exist_ok=True)
 
     # for i in inputs:
     # print(f"{i[0]['header']}{i[1]['header']}")
-    optimize_xsect_partial = functools.partial(optimize_xsect, outdir=outdir)
-    res = [p.apply_async(optimize_xsect_partial, args) for args in inputs]
+    optimize_xsec_partial = functools.partial(optimize_xsec, outdir=outdir)
+    res = [p.apply_async(optimize_xsec_partial, args) for args in inputs]
     results = [r.get() for r in res if r]
     print(f'{len(results)} calculations')
 

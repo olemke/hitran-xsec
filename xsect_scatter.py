@@ -24,17 +24,17 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     ax.set_title(title)
 
 
-def calc_fwhm_and_pressure_difference(xsect_result, hwhm):
+def calc_fwhm_and_pressure_difference(xsec_result, hwhm):
     fwhm = numpy.array(
         [typhon.physics.wavenumber2frequency(
             2 * r['optimum_width']
             * (r['fmax'] - r['fmin'])
             / r['nfreq'] * 100) / float(hwhm) for r in
          # [r['optimum_width'] for r in
-         xsect_result])
+         xsec_result])
     pressure_diff = numpy.array(
         [r['target_pressure'] - r['source_pressure'] for r in
-         xsect_result]) / 100
+         xsec_result]) / 100
 
     return fwhm, pressure_diff
 
@@ -48,7 +48,7 @@ def main():
     datadir = sys.argv[2]
 
     with open(os.path.join(datadir, 'output.txt')) as f:
-        xsect_result = json.load(f)
+        xsec_result = json.load(f)
 
     fig, ax = plt.subplots()
 
@@ -58,63 +58,63 @@ def main():
         title = 'CFC-11'
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         [x for x in xsect_result if x['fmin'] > 800 and x[
+                         [x for x in xsec_result if x['fmin'] > 800 and x[
                              'fmin'] < 1000], hwhm),
                      title, label='810-880')
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         [x for x in xsect_result if x['fmin'] > 1000], hwhm),
+                         [x for x in xsec_result if x['fmin'] > 1000], hwhm),
                      title, label='1050-1120')
     elif species == 'cfc12':
         title = 'CFC-12'
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         [x for x in xsect_result if x['fmin'] < 840], hwhm),
+                         [x for x in xsec_result if x['fmin'] < 840], hwhm),
                      title, label='800-1270')
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         [x for x in xsect_result if x['fmin'] > 840 and x[
+                         [x for x in xsec_result if x['fmin'] > 840 and x[
                              'fmin'] < 1000], hwhm),
                      title, label='850-950')
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         [x for x in xsect_result if x['fmin'] > 1000], hwhm),
+                         [x for x in xsec_result if x['fmin'] > 1000], hwhm),
                      title, label='1050-1200')
     else:
         raise RuntimeError('Unknown species')
 
     ax.legend()
 
-    fig.savefig(os.path.join(datadir, 'xsect_scatter.pdf'))
+    fig.savefig(os.path.join(datadir, 'xsec_scatter.pdf'))
 
     fig, ax = plt.subplots()
 
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsect_result if x['source_temp'] <= 240],
+                     [x for x in xsec_result if x['source_temp'] <= 240],
                      hwhm),
                  title, label='T ≤ 240K')
 
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsect_result if
+                     [x for x in xsec_result if
                       x['source_temp'] > 240 and x['source_temp'] <= 250],
                      hwhm),
                  title, label='240K < T ≤ 250K')
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsect_result if
+                     [x for x in xsec_result if
                       x['source_temp'] > 250 and x['source_temp'] <= 270],
                      hwhm),
                  title, label='250K < T ≤ 270K')
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsect_result if x['source_temp'] > 270], hwhm),
+                     [x for x in xsec_result if x['source_temp'] > 270], hwhm),
                  title, label='270K < T')
 
     ax.legend()
 
-    fig.savefig(os.path.join(datadir, 'xsect_scatter_temp.pdf'))
+    fig.savefig(os.path.join(datadir, 'xsec_scatter_temp.pdf'))
 
 
 if __name__ == '__main__':
