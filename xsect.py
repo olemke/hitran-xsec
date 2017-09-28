@@ -1,5 +1,5 @@
-import functools
 import glob
+import itertools
 import json
 import multiprocessing as mp
 import os
@@ -157,7 +157,94 @@ def calc_xsec_rms(xsec1, xsec2):
             xsec2['data']))))
 
 
-def optimize_xsec(xsec_low, xsec_high, title, outdir='', do_plots=False):
+def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
+                                    outdir=''):
+    xsecs = {
+        'low': xsec_low,
+        'high': xsec_high,
+    }
+
+    xsec_name = (
+        f"{xsecs['low']['longname']}_{xsecs['low']['fmin']:.0f}"
+        f"-{xsecs['low']['fmax']:.0f}_{xsecs['low']['temperature']:.1f}K_"
+        f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
+        f"{xsecs['high']['pressure']:.0f}P_{xsec_result['npoints_max']}")
+
+    fname = f"{xsec_name}_rms.pdf"
+    fname = os.path.join(outdir, fname)
+
+    npoints_arr = range(xsec_result['npoints_min'], xsec_result['npoints_max'],
+                        xsec_result['npoints_step'])
+
+    rms = xsec_result['rms']
+    rms_min = numpy.min(rms)
+    rms_min_i = numpy.argmin(rms)
+    rms_min_n = npoints_arr[numpy.argmin(rms)]
+
+    if os.path.exists(fname):
+        print(f"Skipping plotting: {xsec_high}")
+    else:
+        fig, ax = plt.subplots()
+    fwhm = typhon.physics.wavenumber2frequency(
+        2 * numpy.arange(xsec_result['npoints_min'],
+                         xsec_result['npoints_max'],
+                         xsec_result['npoints_step'])
+        * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
+        / xsecs['low']['nfreq'] * 100) / float(20) / 1e9
+
+    if xsec_result['rms_min_n'] < rms.size:
+        ax.plot((fwhm[rms_min_i], fwhm[rms_min_i]),
+                (numpy.min(rms), numpy.max(rms)),
+                linewidth=1,
+                label=f'Minimum {rms_min:.2e}@{fwhm[rms_min_i]:1.2g} GHz')
+
+    ax.plot(fwhm, rms,
+            label=f"T1: {xsecs['low']['temperature']:.1f}K "
+                  f"P1: {xsecs['low']['pressure']:.0f}P "
+                  f"f: {xsecs['low']['fmin']:1.0f}"
+                  f"-{xsecs['low']['fmax']:1.0f}\n"
+                  f"T2: {xsecs['high']['temperature']:.1f}K "
+                  f"P2: {xsecs['high']['pressure']:.0f}P "
+                  f"f: {xsecs['high']['fmin']:1.0f}"
+                  f"-{xsecs['high']['fmax']:1.0f}",
+            linewidth=0.5)
+
+    ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
+    # ax.set_xlim(xsec_result['npoints_min'], xsec_result['npoints_max'])
+    ax.legend(loc=1)
+    ax.set_ylabel('RMS')
+    ax.set_xlabel('FWHM of Lorentz filter [GHz]')
+    ax.set_title(title)
+
+    # ax.set_ylim(1e-6, 9e-6)
+    fig.savefig(fname)
+    print(f'File saved: {fname}')
+
+    fig, ax = plt.subplots()
+
+    linewidth = 0.5
+    # Plot xsec at low pressure
+    plot_xsec(ax, xsecs['low'], linewidth=linewidth)
+
+    # Plot xsec at high pressure
+    plot_xsec(ax, xsecs['high'], linewidth=linewidth)
+
+    # Plot convoluted xsec
+    npoints = rms_min_n
+    xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
+    plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
+              label=f'Lorentz FWHM {fwhm[rms_min_i]:1.2g} GHz')
+
+    ax.legend(loc=1)
+    ax.set_title(title)
+
+    fname = f"{xsec_name}_xsec.pdf"
+    fname = os.path.join(outdir, fname)
+    fig.savefig(fname)
+    print(f'File saved: {fname}')
+
+
+def optimize_xsec(xsec_low, xsec_high):
     xsecs = {
         'low': xsec_low,
         'high': xsec_high,
@@ -184,6 +271,7 @@ def optimize_xsec(xsec_low, xsec_high, title, outdir='', do_plots=False):
     fgrid_high = numpy.linspace(xsecs['high']['fmin'],
                                 xsecs['high']['fmax'],
                                 xsecs['high']['nfreq'])
+
     if len(xsecs['high']['data']) != len(fgrid_high):
         print(f"Size mismatch in data (skipping): nfreq: "
               f"{xsecs['high']['nfreq']} "
@@ -201,79 +289,9 @@ def optimize_xsec(xsec_low, xsec_high, title, outdir='', do_plots=False):
         rms[i] = calc_xsec_rms(xsecs['conv'],
                                xsecs['high_interp'])
 
-    rms_min = numpy.min(rms)
-    rms_min_i = numpy.argmin(rms)
     rms_min_n = npoints_arr[numpy.argmin(rms)]
-    # first_local_min = scipy.signal.argrelmin(rms)[0][0]
-    # rms_min = rms[first_local_min]
-    # rms_min_n = first_local_min + npoints_min
 
     print(f"Done {xsec_name}")
-
-    fname = f"{xsec_name}_rms.pdf"
-    fname = os.path.join(outdir, fname)
-
-    if not do_plots:
-        pass
-    elif os.path.exists(fname):
-        print(f"Skipping plotting: {xsec_high}")
-    else:
-        fig, ax = plt.subplots()
-        fwhm = typhon.physics.wavenumber2frequency(
-            2 * numpy.arange(npoints_min, npoints_max, step)
-            * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
-            / xsecs['low']['nfreq'] * 100) / float(20) / 1e9
-
-        if rms_min_n < rms.size:
-            ax.plot((fwhm[rms_min_i], fwhm[rms_min_i]),
-                    (numpy.min(rms), numpy.max(rms)),
-                    linewidth=1,
-                    label=f'Minimum {rms_min:.2e}@{fwhm[rms_min_i]:1.2g} GHz')
-        # ax.plot(range(npoints_min, npoints_max, step), rms,
-        ax.plot(fwhm, rms,
-                label=f"T1: {xsecs['low']['temperature']:.1f}K "
-                      f"P1: {xsecs['low']['pressure']:.0f}P "
-                      f"f: {xsecs['low']['fmin']:1.0f}"
-                      f"-{xsecs['low']['fmax']:1.0f}\n"
-                      f"T2: {xsecs['high']['temperature']:.1f}K "
-                      f"P2: {xsecs['high']['pressure']:.0f}P "
-                      f"f: {xsecs['high']['fmin']:1.0f}"
-                      f"-{xsecs['high']['fmax']:1.0f}",
-                linewidth=0.5)
-
-        ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
-        # ax.set_xlim(npoints_min, npoints_max)
-        ax.legend(loc=1)
-        ax.set_ylabel('RMS')
-        ax.set_xlabel('FWHM of Lorentz filter [GHz]')
-        ax.set_title(title)
-
-        # ax.set_ylim(1e-6, 9e-6)
-        fig.savefig(fname)
-        print(f'File saved: {fname}')
-
-        fig, ax = plt.subplots()
-
-        linewidth = 0.5
-        # Plot xsec at low pressure
-        plot_xsec(ax, xsecs['low'], linewidth=linewidth)
-
-        # Plot xsec at high pressure
-        plot_xsec(ax, xsecs['high'], linewidth=linewidth)
-
-        # Plot convoluted xsec
-        npoints = rms_min_n
-        xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
-        plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
-                  label=f'Lorentz FWHM {fwhm[rms_min_i]:1.2g} GHz')
-
-        ax.legend(loc=1)
-        ax.set_title(title)
-
-        fname = f"{xsec_name}_xsec.pdf"
-        fname = os.path.join(outdir, fname)
-        fig.savefig(fname)
-        print(f'File saved: {fname}')
 
     return {
         'source_pressure': float(xsecs['low']['pressure']),
@@ -284,7 +302,10 @@ def optimize_xsec(xsec_low, xsec_high, title, outdir='', do_plots=False):
         'fmax': float(xsecs['low']['fmax']),
         'nfreq': int(xsecs['low']['nfreq']),
         'optimum_width': int(rms_min_n),
-        'rms_min': float(rms_min),
+        'rms': float(rms),
+        'npoints_min': float(npoints_min),
+        'npoints_max': float(npoints_max),
+        'npoints_step': float(step),
     }
 
 
@@ -333,17 +354,25 @@ def main():
         sys.exit(1)
 
     outdir = sys.argv[2]
-    os.makedirs(outdir, exist_ok=True)
+    outfile = os.path.join(outdir, 'output.txt')
 
-    # for i in inputs:
-    # print(f"{i[0]['header']}{i[1]['header']}")
-    optimize_xsec_partial = functools.partial(optimize_xsec, outdir=outdir)
-    res = [p.apply_async(optimize_xsec_partial, args) for args in inputs]
+    if os.path.isfile(outfile):
+        with open(outfile) as f:
+            results = json.load(f)
+    else:
+        os.makedirs(outdir, exist_ok=True)
+
+        res = [p.apply_async(optimize_xsec, args[0:2]) for args in inputs]
+        results = [r.get() for r in res if r]
+        print(f'{len(results)} calculations')
+
+        with open(outfile, 'w') as f:
+            json.dump(results, f)
+
+    res = [p.apply_async(generate_rms_and_spectrum_plots,
+                         (*args, result, ioutdir)) for args, result, ioutdir in
+           zip(inputs, results, itertools.repeat(outdir))]
     results = [r.get() for r in res if r]
-    print(f'{len(results)} calculations')
-
-    with open(os.path.join(outdir, 'output.txt'), 'w') as f:
-        json.dump(results, f)
 
 
 if __name__ == '__main__':
