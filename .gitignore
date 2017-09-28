@@ -1,5 +1,7 @@
+.*.swp
 *.pdf
 .idea
 cfc11
 cfc12
 convtest.py
+arts-example/*.xml
