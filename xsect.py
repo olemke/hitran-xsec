@@ -470,20 +470,20 @@ def main():
     p = mp.Pool()
 
     logging.info('Reading cross section files')
-    if len(sys.argv) > 3 and sys.argv[2] == 'cfc11':
-        title = 'CFC-11'
+    if len(sys.argv) > 2 and sys.argv[2] == 'CFC-11':
+        species = sys.argv[2]
         inputs = combine_inputs(
             'cfc11/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 272),
             (810, 1050),
-            title)
-    elif len(sys.argv) > 3 and sys.argv[2] == 'cfc12':
-        title = 'CFC-12'
+            species)
+    elif len(sys.argv) > 2 and sys.argv[2] == 'CFC-12':
+        species = sys.argv[2]
         inputs = combine_inputs(
             'cfc12/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 268, 272),
             (800, 850, 1050),
-            title)
+            species)
     else:
         print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
               '\n'
@@ -498,19 +498,22 @@ def main():
     if command == 'rms':
         os.makedirs(outdir, exist_ok=True)
 
+        logging.info(f'Calculating RMS')
         res = [p.apply_async(optimize_xsec, args[0:2]) for args in inputs]
         results = [r.get() for r in res if r]
-        logging.info(f'{len(results)} calculations')
+        logging.info(f'Done {len(results)} calculations')
 
         save_output(outfile, results)
         logging.info(f'Saved output to {outfile}')
     elif command == 'scatter':
         logging.info(f'Loading results from {outfile}')
         results = load_output(outfile)
-        scatter_and_fit(results, title, outdir)
+        logging.info(f'Creating scatter plot and fit')
+        scatter_and_fit(results, species, outdir)
     elif command == 'plot':
         logging.info(f'Loading results from {outfile}')
         results = load_output(outfile)
+        logging.info(f'Plotting RMS and Xsecs')
         res = [p.apply_async(generate_rms_and_spectrum_plots,
                              (*args, result, ioutdir))
                for args, result, ioutdir in
