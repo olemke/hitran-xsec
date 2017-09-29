@@ -7,15 +7,135 @@ import os
 import sys
 
 import matplotlib as mpl
-import numpy
 
 mpl.use('Agg')  # noqa
 
-import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
+import numpy
 import typhon
 import typhon.physics
 import typhon.plots
+from scipy.optimize import curve_fit
+
+import matplotlib.pyplot as plt
+
+
+def func_linear(x, a, b):
+    return a * x + b
+
+
+def func_quad(x, a, b, c):
+    return a * x * x + b * x + c
+
+
+def func_log(x, a, b, c, d):
+    return a * numpy.log(b * x + d) + c
+
+
+def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
+    if kwargs is None:
+        kwargs = {}
+
+    # ax.set_ylim((0, 6))
+    ax.scatter(pressure_diff, fwhm / 1e9, **kwargs)
+    ax.set_ylabel('FWHM of Lorentz filter [GHz]')
+    ax.set_xlabel('∆P [hPa]')
+
+    ax.set_title(title)
+
+
+def calc_fwhm_and_pressure_difference(xsec_result, hwhm):
+    fwhm = numpy.array(
+        [typhon.physics.wavenumber2frequency(
+            2 * r['optimum_width']
+            * (r['fmax'] - r['fmin'])
+            / r['nfreq'] * 100) / float(hwhm) for r in
+         xsec_result])
+    pressure_diff = numpy.array(
+        [r['target_pressure'] - r['source_pressure'] for r in
+         xsec_result]) / 100
+
+    return fwhm, pressure_diff
+
+
+def plot_fit(ax, fwhm, pressure_diff):
+    sorted_pressure_diff = numpy.sort(pressure_diff)
+    fit_func = func_log
+    popt, pcov = curve_fit(fit_func, sorted_pressure_diff, fwhm)
+    ax.plot(sorted_pressure_diff,
+            fit_func(sorted_pressure_diff, *popt) / 1e9, label='fit')
+
+
+def scatter_and_fit(xsec_result, species, datadir):
+    fig, ax = plt.subplots()
+
+    hwhm = 20
+    if species == 'CFC-11':
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         [x for x in xsec_result if x['fmin'] > 800 and x[
+                             'fmin'] < 1000], hwhm),
+                     species, label='810-880')
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         [x for x in xsec_result if x['fmin'] > 1000],
+                         hwhm),
+                     species, label='1050-1120')
+        plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result, hwhm))
+    elif species == 'CFC-12':
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         [x for x in xsec_result if x['fmin'] < 840], hwhm),
+                     species, label='800-1270')
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         [x for x in xsec_result if x['fmin'] > 840 and x[
+                             'fmin'] < 1000], hwhm),
+                     species, label='850-950')
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         [x for x in xsec_result if x['fmin'] > 1000],
+                         hwhm),
+                     species, label='1050-1200')
+        plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result, hwhm))
+    else:
+        raise RuntimeError('Unknown species')
+
+    ax.legend()
+
+    fig.savefig(os.path.join(datadir, 'xsec_scatter.pdf'))
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+
+    scatter_plot(ax,
+                 *calc_fwhm_and_pressure_difference(
+                     [x for x in xsec_result if x['source_temp'] <= 240],
+                     hwhm),
+                 species, label='T ≤ 240K')
+
+    scatter_plot(ax,
+                 *calc_fwhm_and_pressure_difference(
+                     [x for x in xsec_result if
+                      x['source_temp'] > 240 and x['source_temp'] <= 250],
+                     hwhm),
+                 species, label='240K < T ≤ 250K')
+    scatter_plot(ax,
+                 *calc_fwhm_and_pressure_difference(
+                     [x for x in xsec_result if
+                      x['source_temp'] > 250 and x['source_temp'] <= 270],
+                     hwhm),
+                 species, label='250K < T ≤ 270K')
+    scatter_plot(ax,
+                 *calc_fwhm_and_pressure_difference(
+                     [x for x in xsec_result if x['source_temp'] > 270],
+                     hwhm),
+                 species, label='270K < T')
+
+    ax.legend()
+
+    fig.savefig(os.path.join(datadir, 'xsec_scatter_temp.pdf'))
+    plt.close(fig)
 
 
 def convert_line_to_float(line):
@@ -344,24 +464,26 @@ def load_output(filename):
 
 def main():
     logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)s:%(asctime)s:%(message)s',
+                        format='%(asctime)s:%(levelname)s: %(message)s',
                         datefmt='%b %d %H:%M:%S')
 
     p = mp.Pool()
 
     logging.info('Reading cross section files')
     if len(sys.argv) > 3 and sys.argv[2] == 'cfc11':
+        title = 'CFC-11'
         inputs = combine_inputs(
             'cfc11/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 272),
             (810, 1050),
-            'CFC-11')
+            title)
     elif len(sys.argv) > 3 and sys.argv[2] == 'cfc12':
+        title = 'CFC-12'
         inputs = combine_inputs(
             'cfc12/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 268, 272),
             (800, 850, 1050),
-            'CFC-12')
+            title)
     else:
         print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
               '\n'
@@ -382,17 +504,18 @@ def main():
 
         save_output(outfile, results)
         logging.info(f'Saved output to {outfile}')
+    elif command == 'scatter':
+        logging.info(f'Loading results from {outfile}')
+        results = load_output(outfile)
+        scatter_and_fit(results, title, outdir)
     elif command == 'plot':
         logging.info(f'Loading results from {outfile}')
-        load_output(outfile)
+        results = load_output(outfile)
         res = [p.apply_async(generate_rms_and_spectrum_plots,
                              (*args, result, ioutdir))
                for args, result, ioutdir in
                zip(inputs, results, itertools.repeat(outdir))]
         results = [r.get() for r in res if r]
-    elif command == 'fit':
-        logging.info(f'Loading results from {outfile}')
-        load_output(outfile)
 
 
 if __name__ == '__main__':
