@@ -176,15 +176,12 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     npoints_arr = range(xsec_result['npoints_min'], xsec_result['npoints_max'],
                         xsec_result['npoints_step'])
 
-    rms = xsec_result['rms']
+    rms = numpy.array(xsec_result['rms'])
     rms_min = numpy.min(rms)
     rms_min_i = numpy.argmin(rms)
     rms_min_n = npoints_arr[numpy.argmin(rms)]
 
-    if os.path.exists(fname):
-        print(f"Skipping plotting: {xsec_high}")
-    else:
-        fig, ax = plt.subplots()
+    fig, ax = plt.subplots()
     fwhm = typhon.physics.wavenumber2frequency(
         2 * numpy.arange(xsec_result['npoints_min'],
                          xsec_result['npoints_max'],
@@ -192,7 +189,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
         * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
         / xsecs['low']['nfreq'] * 100) / float(20) / 1e9
 
-    if xsec_result['rms_min_n'] < rms.size:
+    if rms_min_n < rms.size:
         ax.plot((fwhm[rms_min_i], fwhm[rms_min_i]),
                 (numpy.min(rms), numpy.max(rms)),
                 linewidth=1,
@@ -218,6 +215,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
 
     # ax.set_ylim(1e-6, 9e-6)
     fig.savefig(fname)
+    plt.close(fig)
     print(f'File saved: {fname}')
 
     fig, ax = plt.subplots()
@@ -241,6 +239,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     fname = f"{xsec_name}_xsec.pdf"
     fname = os.path.join(outdir, fname)
     fig.savefig(fname)
+    plt.close(fig)
     print(f'File saved: {fname}')
 
 
@@ -302,10 +301,10 @@ def optimize_xsec(xsec_low, xsec_high):
         'fmax': float(xsecs['low']['fmax']),
         'nfreq': int(xsecs['low']['nfreq']),
         'optimum_width': int(rms_min_n),
-        'rms': float(rms),
-        'npoints_min': float(npoints_min),
-        'npoints_max': float(npoints_max),
-        'npoints_step': float(step),
+        'npoints_min': int(npoints_min),
+        'npoints_max': int(npoints_max),
+        'npoints_step': int(step),
+        'rms': rms.tolist(),
     }
 
 
