@@ -1,6 +1,7 @@
 import glob
 import itertools
 import json
+import logging
 import multiprocessing as mp
 import os
 import sys
@@ -48,7 +49,7 @@ def hitran_raw_xsec_to_dict(header, data):
     xsec_dict['header'] = header
     xsec_dict['data'] = data
     # Recalculate number of frequency points based on actual data values since
-    # header infomation if not correct for some files
+    # header information if not correct for some files
     xsec_dict['nfreq'] = len(data)
     xsec_dict['pressure'] = torr_to_pascal(xsec_dict['pressure'])
     return xsec_dict
@@ -207,16 +208,14 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
             linewidth=0.5)
 
     ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
-    # ax.set_xlim(xsec_result['npoints_min'], xsec_result['npoints_max'])
     ax.legend(loc=1)
     ax.set_ylabel('RMS')
     ax.set_xlabel('FWHM of Lorentz filter [GHz]')
     ax.set_title(title)
 
-    # ax.set_ylim(1e-6, 9e-6)
     fig.savefig(fname)
     plt.close(fig)
-    print(f'File saved: {fname}')
+    logging.info(f'Saved: {fname}')
 
     fig, ax = plt.subplots()
 
@@ -240,7 +239,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     fname = os.path.join(outdir, fname)
     fig.savefig(fname)
     plt.close(fig)
-    print(f'File saved: {fname}')
+    logging.info(f'File saved: {fname}')
 
 
 def optimize_xsec(xsec_low, xsec_high):
@@ -258,7 +257,7 @@ def optimize_xsec(xsec_low, xsec_high):
         f"-{xsecs['low']['fmax']:.0f}_{xsecs['low']['temperature']:.1f}K_"
         f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
         f"{xsecs['high']['pressure']:.0f}P_{npoints_max}")
-    print(f"Calc {xsec_name}")
+    logging.info(f"Calc {xsec_name}")
 
     rms = numpy.zeros(((npoints_max - npoints_min) // step,))
     npoints_arr = range(npoints_min, npoints_max, step)
@@ -272,10 +271,10 @@ def optimize_xsec(xsec_low, xsec_high):
                                 xsecs['high']['nfreq'])
 
     if len(xsecs['high']['data']) != len(fgrid_high):
-        print(f"Size mismatch in data (skipping): nfreq: "
-              f"{xsecs['high']['nfreq']} "
-              f"datasize: {len(xsecs['high']['data'])} "
-              f"header: {xsecs['high']['header']}")
+        logging.error(f"Size mismatch in data (skipping): nfreq: "
+                      f"{xsecs['high']['nfreq']} "
+                      f"datasize: {len(xsecs['high']['data'])} "
+                      f"header: {xsecs['high']['header']}")
         return {}
 
     for i, npoints in enumerate(npoints_arr):
@@ -290,7 +289,7 @@ def optimize_xsec(xsec_low, xsec_high):
 
     rms_min_n = npoints_arr[numpy.argmin(rms)]
 
-    print(f"Done {xsec_name}")
+    logging.info(f"Done {xsec_name}")
 
     return {
         'source_pressure': float(xsecs['low']['pressure']),
@@ -333,45 +332,53 @@ def combine_inputs(infiles, temps, freqs, name):
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(levelname)s:%(asctime)s:%(message)s',
+                        datefmt='%b %d %H:%M:%S')
+
     p = mp.Pool()
 
-    if len(sys.argv) > 2 and sys.argv[1] == 'cfc11':
+    logging.info('Reading cross section files')
+    if len(sys.argv) > 3 and sys.argv[2] == 'cfc11':
         inputs = combine_inputs(
             'cfc11/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 272),
             (810, 1050),
             'CFC-11')
-    elif len(sys.argv) > 2 and sys.argv[1] == 'cfc12':
+    elif len(sys.argv) > 3 and sys.argv[2] == 'cfc12':
         inputs = combine_inputs(
             'cfc12/*00.xsc',
             (190, 201, 208, 216, 225, 232, 246, 260, 268, 272),
             (800, 850, 1050),
             'CFC-12')
     else:
-        print(f'Usage: {sys.argv[0]} SPECIES OUTDIR')
-        print(f'  SPECIES: cfc11 or cfc12')
+        print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
+              '\n'
+              '  COMMAND: rms, plot or fit\n'
+              '  SPECIES: cfc11 or cfc12')
         sys.exit(1)
 
-    outdir = sys.argv[2]
+    command = sys.argv[1]
+    outdir = sys.argv[3]
     outfile = os.path.join(outdir, 'output.txt')
 
-    if os.path.isfile(outfile):
-        with open(outfile) as f:
-            results = json.load(f)
-    else:
+    if command == 'rms':
         os.makedirs(outdir, exist_ok=True)
 
         res = [p.apply_async(optimize_xsec, args[0:2]) for args in inputs]
         results = [r.get() for r in res if r]
-        print(f'{len(results)} calculations')
+        logging.info(f'{len(results)} calculations')
 
         with open(outfile, 'w') as f:
             json.dump(results, f)
-
-    res = [p.apply_async(generate_rms_and_spectrum_plots,
-                         (*args, result, ioutdir)) for args, result, ioutdir in
-           zip(inputs, results, itertools.repeat(outdir))]
-    results = [r.get() for r in res if r]
+    elif command == 'plot':
+        with open(outfile) as f:
+            results = json.load(f)
+        res = [p.apply_async(generate_rms_and_spectrum_plots,
+                             (*args, result, ioutdir))
+               for args, result, ioutdir in
+               zip(inputs, results, itertools.repeat(outdir))]
+        results = [r.get() for r in res if r]
 
 
 if __name__ == '__main__':
