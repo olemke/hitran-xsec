@@ -316,26 +316,18 @@ def xsec_select(xsecs, freq, freq_epsilon, temp, temp_epsilon):
     return sorted(xsec_sel, key=lambda xsec: xsec['pressure'])
 
 
-def get_cfc11_inputs():
-    infiles = glob.glob('cfc11/*00.xsc')
+def combine_inputs(infiles, temps, freqs, name):
+    """Create list of inputs.
+
+    Puts low pressure and high pressure data together in pairs.
+    """
+    infiles = glob.glob(infiles)
     xsecs = [read_hitran_xsec(f) for f in infiles]
     inputs = []
-    for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 272):
-        for freq in (810, 1050):
+    for temperature in temps:
+        for freq in freqs:
             xsecs_sel = xsec_select(xsecs, freq, 10, temperature, 2)
-            for t in ((xsecs_sel[0], x2, 'CFC-11') for x2 in xsecs_sel[1:]):
-                inputs.append(t)
-    return inputs
-
-
-def get_cfc12_inputs():
-    infiles = glob.glob('cfc12/*00.xsc')
-    xsecs = [read_hitran_xsec(f) for f in infiles]
-    inputs = []
-    for temperature in (190, 201, 208, 216, 225, 232, 246, 260, 268, 272):
-        for freq in (800, 850, 1050):
-            xsecs_sel = xsec_select(xsecs, freq, 10, temperature, 2)
-            for t in ((xsecs_sel[0], x2, 'CFC-12') for x2 in xsecs_sel[1:]):
+            for t in ((xsecs_sel[0], x2, name) for x2 in xsecs_sel[1:]):
                 inputs.append(t)
     return inputs
 
@@ -344,9 +336,17 @@ def main():
     p = mp.Pool()
 
     if len(sys.argv) > 2 and sys.argv[1] == 'cfc11':
-        inputs = get_cfc11_inputs()
+        inputs = combine_inputs(
+            'cfc11/*00.xsc',
+            (190, 201, 208, 216, 225, 232, 246, 260, 272),
+            (810, 1050),
+            'CFC-11')
     elif len(sys.argv) > 2 and sys.argv[1] == 'cfc12':
-        inputs = get_cfc12_inputs()
+        inputs = combine_inputs(
+            'cfc12/*00.xsc',
+            (190, 201, 208, 216, 225, 232, 246, 260, 268, 272),
+            (800, 850, 1050),
+            'CFC-12')
     else:
         print(f'Usage: {sys.argv[0]} SPECIES OUTDIR')
         print(f'  SPECIES: cfc11 or cfc12')
