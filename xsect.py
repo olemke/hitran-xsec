@@ -331,6 +331,17 @@ def combine_inputs(infiles, temps, freqs, name):
     return inputs
 
 
+def save_output(filename, results):
+    with open(filename, 'w') as f:
+        json.dump(results, f)
+
+
+def load_output(filename):
+    with open(filename) as f:
+        results = json.load(f)
+    return results
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)s:%(asctime)s:%(message)s',
@@ -369,16 +380,19 @@ def main():
         results = [r.get() for r in res if r]
         logging.info(f'{len(results)} calculations')
 
-        with open(outfile, 'w') as f:
-            json.dump(results, f)
+        save_output(outfile, results)
+        logging.info(f'Saved output to {outfile}')
     elif command == 'plot':
-        with open(outfile) as f:
-            results = json.load(f)
+        logging.info(f'Loading results from {outfile}')
+        load_output(outfile)
         res = [p.apply_async(generate_rms_and_spectrum_plots,
                              (*args, result, ioutdir))
                for args, result, ioutdir in
                zip(inputs, results, itertools.repeat(outdir))]
         results = [r.get() for r in res if r]
+    elif command == 'fit':
+        logging.info(f'Loading results from {outfile}')
+        load_output(outfile)
 
 
 if __name__ == '__main__':
