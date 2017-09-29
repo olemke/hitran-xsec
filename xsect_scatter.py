@@ -17,8 +17,6 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
 
     ax.set_ylim((0, 6))
     ax.scatter(pressure_diff, fwhm / 1e9, **kwargs)
-    # ax.semilogx()
-    # ax.set_ylabel('∆λ FWHM of Lorentz filter [Hz]')
     ax.set_ylabel('FWHM of Lorentz filter [GHz]')
     ax.set_xlabel('∆P [hPa]')
     ax.set_title(title)
@@ -30,7 +28,6 @@ def calc_fwhm_and_pressure_difference(xsec_result, hwhm):
             2 * r['optimum_width']
             * (r['fmax'] - r['fmin'])
             / r['nfreq'] * 100) / float(hwhm) for r in
-         # [r['optimum_width'] for r in
          xsec_result])
     pressure_diff = numpy.array(
         [r['target_pressure'] - r['source_pressure'] for r in
@@ -40,12 +37,12 @@ def calc_fwhm_and_pressure_difference(xsec_result, hwhm):
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(f'Usage: {sys.argv[0]} SPECIES TITLE DATADIR')
         print(f'  SPECIES: cfc11 or cfc12')
         sys.exit(1)
 
-    datadir = sys.argv[2]
+    datadir = sys.argv[3]
 
     with open(os.path.join(datadir, 'output.txt')) as f:
         xsec_result = json.load(f)
@@ -54,8 +51,8 @@ def main():
 
     hwhm = 20
     species = sys.argv[1]
+    title = sys.argv[2]
     if species == 'cfc11':
-        title = 'CFC-11'
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
                          [x for x in xsec_result if x['fmin'] > 800 and x[
@@ -66,7 +63,6 @@ def main():
                          [x for x in xsec_result if x['fmin'] > 1000], hwhm),
                      title, label='1050-1120')
     elif species == 'cfc12':
-        title = 'CFC-12'
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
                          [x for x in xsec_result if x['fmin'] < 840], hwhm),
@@ -86,6 +82,7 @@ def main():
     ax.legend()
 
     fig.savefig(os.path.join(datadir, 'xsec_scatter.pdf'))
+    plt.close(fig)
 
     fig, ax = plt.subplots()
 
@@ -115,6 +112,7 @@ def main():
     ax.legend()
 
     fig.savefig(os.path.join(datadir, 'xsec_scatter_temp.pdf'))
+    plt.close(fig)
 
 
 if __name__ == '__main__':
