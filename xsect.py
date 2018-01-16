@@ -22,8 +22,8 @@ from scipy.optimize import curve_fit
 
 import matplotlib.pyplot as plt
 
+_total_points = 2000
 
-_hwhm_i_width = 20
 
 def func_linear(x, a, b):
     return a * x + b
@@ -67,13 +67,13 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     ax.set_title(title)
 
 
-def calc_fwhm_and_pressure_difference_orig(xsec_result, hwhm=_hwhm_i_width):
+def calc_fwhm_and_pressure_difference_orig(xsec_result):
     fwhm = numpy.array(
         [typhon.physics.wavenumber2frequency(
             2 * r['optimum_width']
             * (r['fmax'] - r['fmin'])
-            / r['nfreq'] * 100) / float(hwhm) for r in
-         xsec_result])
+            / r['nfreq'] * 100) for r in
+            xsec_result])
     pressure_diff = numpy.array(
         [r['target_pressure'] - r['source_pressure'] for r in
          xsec_result])
@@ -81,10 +81,10 @@ def calc_fwhm_and_pressure_difference_orig(xsec_result, hwhm=_hwhm_i_width):
     return fwhm, pressure_diff
 
 
-def calc_fwhm_and_pressure_difference(xsec_result, hwhm=20):
+def calc_fwhm_and_pressure_difference(xsec_result):
     fwhm = 2 * numpy.array(
         [typhon.physics.wavenumber2frequency(
-            r['optimum_width'] / float(hwhm)
+            r['optimum_width']
             * (r['fmax'] - r['fmin'])
             / r['nfreq'] * 100) for r in
             xsec_result])
@@ -319,10 +319,13 @@ def lorentz_pdf(x, x0, gamma):
     return gamma / numpy.pi / ((x - x0) ** 2 + gamma ** 2)
 
 
-def run_lorentz(npoints):
-    ret = lorentz_pdf(numpy.linspace(0, npoints, npoints),
-                      npoints / 2,
-                      npoints / _hwhm_i_width)
+def run_lorentz(npoints, total_points=_total_points):
+    ret = lorentz_pdf(numpy.linspace(0, total_points, total_points),
+                      total_points / 2,
+                      npoints)
+    # ret = lorentz_pdf(numpy.linspace(0, npoints, npoints),
+    #                   npoints / 2,
+    #                   npoints)
     ret /= numpy.sum(ret)
     return ret
 
@@ -331,15 +334,15 @@ def xsec_convolve_f(xsec1, fwhm, owidth, convfunc):
     fstep = typhon.physics.wavenumber2frequency(
         (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq'] * 100)
 
-    width = _hwhm_i_width * int(fwhm / fstep)
+    width = round(fwhm / fstep)
     if width == 0: width = 1
     print("width:", width, "owidth:", owidth)
 
     conv_f = convfunc(width)
     xsec_extended = numpy.hstack(
-        (numpy.ones((width // 2,)) * xsec1['data'][0],
+        (numpy.ones((owidth // 2,)) * xsec1['data'][0],
          xsec1['data'],
-         numpy.ones(((width + 1) // 2 - 1,)) * xsec1['data'][-1]))
+         numpy.ones(((owidth + 1) // 2 - 1,)) * xsec1['data'][-1]))
     xsec_conv = xsec1.copy()
     xsec_conv['data'] = numpy.convolve(xsec_extended, conv_f, 'valid')
 
@@ -349,9 +352,9 @@ def xsec_convolve_f(xsec1, fwhm, owidth, convfunc):
 def xsec_convolve(xsec1, width, convfunc):
     conv_f = convfunc(width)
     xsec_extended = numpy.hstack(
-        (numpy.ones((width // 2,)) * xsec1['data'][0],
+        (numpy.ones((_total_points // 2,)) * xsec1['data'][0],
          xsec1['data'],
-         numpy.ones(((width + 1) // 2 - 1,)) * xsec1['data'][-1]))
+         numpy.ones(((_total_points + 1) // 2 - 1,)) * xsec1['data'][-1]))
     xsec_conv = xsec1.copy()
     xsec_conv['data'] = numpy.convolve(xsec_extended, conv_f, 'valid')
     return xsec_conv
@@ -408,20 +411,20 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
                      xsec_result['npoints_max'],
                      xsec_result['npoints_step'])
         * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
-        / xsecs['low']['nfreq'] * 100) / float(_hwhm_i_width)
+        / xsecs['low']['nfreq'] * 100)
 
     if rms_min_n < rms.size:
         ax.plot((fwhm[rms_min_i] / 1e9, fwhm[rms_min_i] / 1e9),
-        # ax.plot((rms_min_i, rms_min_i),
+                # ax.plot((rms_min_i, rms_min_i),
                 (numpy.min(rms), numpy.max(rms)),
                 linewidth=1,
                 label=f'Minimum {rms_min:.2e}@{fwhm[rms_min_i]:1.2g} GHz')
 
     ax.plot(fwhm / 1e9, rms,
-    # ax.plot(numpy.arange(xsec_result['npoints_min'],
-    #                      xsec_result['npoints_max'],
-    #                      xsec_result['npoints_step']),
-    #         rms,
+            # ax.plot(numpy.arange(xsec_result['npoints_min'],
+            #                      xsec_result['npoints_max'],
+            #                      xsec_result['npoints_step']),
+            #         rms,
             label=f"T1: {xsecs['low']['temperature']:.1f}K "
                   f"P1: {xsecs['low']['pressure']:.0f}P "
                   f"f: {xsecs['low']['fmin']:1.0f}"
@@ -457,9 +460,10 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     fmax = xsecs['low']['fmax']
     nf = xsecs['low']['nfreq']
     print(
-        f"hpress: {xsecs['high']['pressure']} width: {2*typhon.physics.wavenumber2frequency(float(npoints)/_hwhm_i_width*(fmax-fmin)/nf*100)/1e9} - fwhm: {fwhm[rms_min_i]/1e9}")
+        f"hpress: {xsecs['high']['pressure']} width: {2*typhon.physics.wavenumber2frequency(float(npoints)*(fmax-fmin)/nf*100)/1e9} - fwhm: {fwhm[rms_min_i]/1e9}")
     # xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
-    xsecs['conv'] = xsec_convolve_f(xsecs['low'], fwhm[rms_min_i] / 2, npoints,
+    xsecs['conv'] = xsec_convolve_f(xsecs['low'], fwhm[rms_min_i] / 2,
+                                    _total_points,
                                     run_lorentz)
 
     plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
@@ -482,8 +486,8 @@ def optimize_xsec(xsec_low, xsec_high):
     }
 
     npoints_min = 1
-    npoints_max = 1000
-    step = 2
+    npoints_max = 500
+    step = 1
 
     xsec_name = (
         f"{xsecs['low']['longname']}_{xsecs['low']['fmin']:.0f}"
