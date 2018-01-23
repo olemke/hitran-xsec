@@ -1,7 +1,10 @@
+*.bak
 *.pdf
 .*.swp
 .idea
+__pycache__
 arts-example/*.xml
 cfc11
 cfc12
 convtest.py
+output_*
