@@ -18,11 +18,18 @@ import typhon.physics
 import typhon.plots
 import typhon.arts.xml
 import typhon.arts.xsec
+from typhon.physics import frequency2wavenumber, wavenumber2frequency
 from scipy.optimize import curve_fit
+from scipy.signal import fftconvolve
 
 import matplotlib.pyplot as plt
 
-_total_points = 2000
+# _lorentz_cutoff = 1./1000.
+_lorentz_cutoff = None
+
+
+class LorentzError(RuntimeError):
+    pass
 
 
 def func_linear(x, a, b):
@@ -67,30 +74,10 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     ax.set_title(title)
 
 
-def calc_fwhm_and_pressure_difference_orig(xsec_result):
-    fwhm = numpy.array(
-        [typhon.physics.wavenumber2frequency(
-            2 * r['optimum_width']
-            * (r['fmax'] - r['fmin'])
-            / r['nfreq'] * 100) for r in
-            xsec_result])
-    pressure_diff = numpy.array(
-        [r['target_pressure'] - r['source_pressure'] for r in
-         xsec_result])
-
-    return fwhm, pressure_diff
-
-
 def calc_fwhm_and_pressure_difference(xsec_result):
-    fwhm = 2 * numpy.array(
-        [typhon.physics.wavenumber2frequency(
-            r['optimum_width']
-            * (r['fmax'] - r['fmin'])
-            / r['nfreq'] * 100) for r in
-            xsec_result])
+    fwhm = numpy.array([r['optimum_fwhm'] for r in xsec_result])
     pressure_diff = numpy.array(
-        [r['target_pressure'] - r['source_pressure'] for r in
-         xsec_result])
+        [r['target_pressure'] - r['source_pressure'] for r in xsec_result])
 
     return fwhm, pressure_diff
 
@@ -103,8 +90,9 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=True):
         decision = forrest.predict(data) != -1
     else:
         decision = numpy.ones_like(fwhm, dtype='bool')
+    # noinspection PyTypeChecker
     popt, pcov = curve_fit(fit_func, pressure_diff[decision], fwhm[decision],
-                           p0=(30000, 1e6, 1e6))
+                           p0=(30000., 1e6, 1e6))
     return popt, pcov, decision
 
 
@@ -131,7 +119,8 @@ def plot_fit(ax, fwhm, pressure_diff, outliers=True):
 
 
 def xsec_select_band(xsec_result, flower=0, fupper=numpy.Inf):
-    return [x for x in xsec_result if x['fmin'] > flower and x['fmin'] < fupper]
+    return [x for x in xsec_result if
+            flower < frequency2wavenumber(x['fmin'] / 100) < fupper]
 
 
 def scatter_and_fit(xsec_result, species, datadir):
@@ -168,20 +157,17 @@ def scatter_and_fit(xsec_result, species, datadir):
         # fwhm = fwhm[s]
         # pressure_diff = pressure_diff[s]
         plot_fit(ax, fwhm, pressure_diff)
-    elif species == 'CFC13':
+    elif species == 'HCFC22':
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, fupper=770)),
-                     species, label='765-805')
+                         xsec_select_band(xsec_result,
+                                          flower=750, fupper=870)),
+                     species, label='760-860')
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=770,
-                                          fupper=1000)),
-                     species, label='1065-1140')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=1100)),
-                     species, label='1170-1235')
+                         xsec_select_band(xsec_result,
+                                          flower=1060, fupper=1200)),
+                     species, label='1070-1195')
         plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result))
     else:
         raise RuntimeError('Unknown species')
@@ -195,19 +181,17 @@ def scatter_and_fit(xsec_result, species, datadir):
 
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsec_result if x['source_temp'] <= 240]),
-                 species, label='T ≤ 240K')
+                     [x for x in xsec_result if x['source_temp'] <= 210]),
+                 species, label='T ≤ 210K')
 
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsec_result if
-                      x['source_temp'] > 240 and x['source_temp'] <= 250]),
-                 species, label='240K < T ≤ 250K')
+                     [x for x in xsec_result if 210 < x['source_temp'] <= 240]),
+                 species, label='210K < T ≤ 240K')
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
-                     [x for x in xsec_result if
-                      x['source_temp'] > 250 and x['source_temp'] <= 270]),
-                 species, label='250K < T ≤ 270K')
+                     [x for x in xsec_result if 240 < x['source_temp'] <= 270]),
+                 species, label='240K < T ≤ 270K')
     scatter_plot(ax,
                  *calc_fwhm_and_pressure_difference(
                      [x for x in xsec_result if x['source_temp'] > 270]),
@@ -253,10 +237,24 @@ def hitran_raw_xsec_to_dict(header, data):
     # header information if not correct for some files
     xsec_dict['nfreq'] = len(data)
     xsec_dict['pressure'] = torr_to_pascal(xsec_dict['pressure'])
+    xsec_dict['fmin'] = wavenumber2frequency(xsec_dict['fmin'] * 100)
+    xsec_dict['fmax'] = wavenumber2frequency(xsec_dict['fmax'] * 100)
+
+    # if xsec_dict['nfreq'] < 150000:
+    #     xsec_dict['data'] = numpy.interp(
+    #         numpy.linspace(xsec_dict['fmin'], xsec_dict['fmax'], num=200000,
+    #                        endpoint=True),
+    #         numpy.linspace(xsec_dict['fmin'], xsec_dict['fmax'],
+    #                        num=xsec_dict['nfreq'], endpoint=True),
+    #         data
+    #     )
+    #     xsec_dict['nfreq'] = 200000
+
     return xsec_dict
 
 
 def read_hitran_xsec(filename):
+    logging.info(f"Reading {filename}")
     with open(filename) as f:
         header = f.readline()
         data = numpy.hstack(
@@ -311,53 +309,29 @@ def run_mean(npoints):
     return numpy.ones((npoints,)) / npoints
 
 
-def lorentz(x, x0, gamma, i=1):
-    return i * gamma / numpy.pi / ((x - x0) ** 2 + gamma ** 2)
-
-
 def lorentz_pdf(x, x0, gamma):
     return gamma / numpy.pi / ((x - x0) ** 2 + gamma ** 2)
 
 
-def run_lorentz(npoints, total_points=_total_points):
-    ret = lorentz_pdf(numpy.linspace(0, total_points, total_points),
-                      total_points / 2,
-                      npoints)
-    # ret = lorentz_pdf(numpy.linspace(0, npoints, npoints),
-    #                   npoints / 2,
-    #                   npoints)
-    ret /= numpy.sum(ret)
-    return ret
+def run_lorentz_f(npoints, fstep, hwhm, cutoff=None):
+    ret = lorentz_pdf(
+        numpy.linspace(0, fstep * npoints, npoints, endpoint=True),
+        fstep * npoints / 2,
+        hwhm)
+    if cutoff is not None:
+        ret = ret[ret > numpy.max(ret) * cutoff]
+    return ret / numpy.sum(ret)
 
 
-def xsec_convolve_f(xsec1, fwhm, owidth, convfunc):
-    fstep = typhon.physics.wavenumber2frequency(
-        (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq'] * 100)
+def xsec_convolve_f(xsec1, hwhm, convfunc, cutoff=None):
+    fstep = (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq']
 
-    width = round(fwhm / fstep)
-    if width == 0: width = 1
-    print("width:", width, "owidth:", owidth)
-
-    conv_f = convfunc(width)
-    xsec_extended = numpy.hstack(
-        (numpy.ones((owidth // 2,)) * xsec1['data'][0],
-         xsec1['data'],
-         numpy.ones(((owidth + 1) // 2 - 1,)) * xsec1['data'][-1]))
+    conv_f = convfunc(int(xsec1['nfreq']), fstep, hwhm, cutoff=cutoff)
+    width = len(conv_f)
     xsec_conv = xsec1.copy()
-    xsec_conv['data'] = numpy.convolve(xsec_extended, conv_f, 'valid')
+    xsec_conv['data'] = fftconvolve(xsec1['data'], conv_f, 'same')
 
-    return xsec_conv
-
-
-def xsec_convolve(xsec1, width, convfunc):
-    conv_f = convfunc(width)
-    xsec_extended = numpy.hstack(
-        (numpy.ones((_total_points // 2,)) * xsec1['data'][0],
-         xsec1['data'],
-         numpy.ones(((_total_points + 1) // 2 - 1,)) * xsec1['data'][-1]))
-    xsec_conv = xsec1.copy()
-    xsec_conv['data'] = numpy.convolve(xsec_extended, conv_f, 'valid')
-    return xsec_conv
+    return xsec_conv, conv_f, width
 
 
 def calc_xsec_std(xsec1, xsec2):
@@ -389,50 +363,40 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     }
 
     xsec_name = (
-        f"{xsecs['low']['longname']}_{xsecs['low']['fmin']:.0f}"
-        f"-{xsecs['low']['fmax']:.0f}_{xsecs['low']['temperature']:.1f}K_"
+        f"{xsecs['low']['longname']}_"
+        f"{frequency2wavenumber(xsecs['low']['fmin'])/100.:.0f}"
+        f"-{frequency2wavenumber(xsecs['low']['fmax'])/100.:.0f}"
+        f"_{xsecs['low']['temperature']:.1f}K_"
         f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
-        f"{xsecs['high']['pressure']:.0f}P_{xsec_result['npoints_max']}")
+        f"{xsecs['high']['pressure']:.0f}P")
 
     fname = f"{xsec_name}_rms.pdf"
     fname = os.path.join(outdir, fname)
 
-    npoints_arr = range(xsec_result['npoints_min'], xsec_result['npoints_max'],
-                        xsec_result['npoints_step'])
+    fwhms = numpy.linspace(xsec_result['fwhm_min'], xsec_result['fwhm_max'],
+                           xsec_result['fwhm_nsteps'], endpoint=True)
 
     rms = numpy.array(xsec_result['rms'])
     rms_min = numpy.min(rms)
     rms_min_i = numpy.argmin(rms)
-    rms_min_n = npoints_arr[numpy.argmin(rms)]
 
     fig, ax = plt.subplots()
-    fwhm = 2 * typhon.physics.wavenumber2frequency(
-        numpy.arange(xsec_result['npoints_min'],
-                     xsec_result['npoints_max'],
-                     xsec_result['npoints_step'])
-        * (xsecs['low']['fmax'] - xsecs['low']['fmin'])
-        / xsecs['low']['nfreq'] * 100)
-
-    if rms_min_n < rms.size:
-        ax.plot((fwhm[rms_min_i] / 1e9, fwhm[rms_min_i] / 1e9),
-                # ax.plot((rms_min_i, rms_min_i),
+    if rms_min_i < rms.size:
+        ax.plot((fwhms[rms_min_i] / 1e9, fwhms[rms_min_i] / 1e9),
                 (numpy.min(rms), numpy.max(rms)),
                 linewidth=1,
-                label=f'Minimum {rms_min:.2e}@{fwhm[rms_min_i]:1.2g} GHz')
+                label=f'Minimum RMS {rms_min:.2e}"'
+                      f'@{fwhms[rms_min_i]/1e9:1.2g} GHz')
 
-    ax.plot(fwhm / 1e9, rms,
-            # ax.plot(numpy.arange(xsec_result['npoints_min'],
-            #                      xsec_result['npoints_max'],
-            #                      xsec_result['npoints_step']),
-            #         rms,
+    ax.plot(fwhms / 1e9, rms,
             label=f"T1: {xsecs['low']['temperature']:.1f}K "
                   f"P1: {xsecs['low']['pressure']:.0f}P "
-                  f"f: {xsecs['low']['fmin']:1.0f}"
-                  f"-{xsecs['low']['fmax']:1.0f}\n"
+                  f"f: {frequency2wavenumber(xsecs['low']['fmin']/100):1.0f}"
+                  f"-{frequency2wavenumber(xsecs['low']['fmax']/100):1.0f}\n"
                   f"T2: {xsecs['high']['temperature']:.1f}K "
                   f"P2: {xsecs['high']['pressure']:.0f}P "
-                  f"f: {xsecs['high']['fmin']:1.0f}"
-                  f"-{xsecs['high']['fmax']:1.0f}",
+                  f"f: {frequency2wavenumber(xsecs['high']['fmin']/100):1.0f}"
+                  f"-{frequency2wavenumber(xsecs['high']['fmax']/100):1.0f}",
             linewidth=0.5)
 
     ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
@@ -455,19 +419,12 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     plot_xsec(ax, xsecs['high'], linewidth=linewidth)
 
     # Plot convoluted xsec
-    npoints = rms_min_n
-    fmin = xsecs['low']['fmin']
-    fmax = xsecs['low']['fmax']
-    nf = xsecs['low']['nfreq']
-    print(
-        f"hpress: {xsecs['high']['pressure']} width: {2*typhon.physics.wavenumber2frequency(float(npoints)*(fmax-fmin)/nf*100)/1e9} - fwhm: {fwhm[rms_min_i]/1e9}")
-    # xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
-    xsecs['conv'] = xsec_convolve_f(xsecs['low'], fwhm[rms_min_i] / 2,
-                                    _total_points,
-                                    run_lorentz)
+    xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'],
+                                                 fwhms[rms_min_i] / 2,
+                                                 run_lorentz_f, _lorentz_cutoff)
 
     plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
-              label=f'Lorentz FWHM {fwhm[rms_min_i]/1e9:1.2g} GHz')
+              label=f'Lorentz FWHM {fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     ax.legend(loc=1)
     ax.set_title(title)
@@ -485,19 +442,21 @@ def optimize_xsec(xsec_low, xsec_high):
         'high': xsec_high,
     }
 
-    npoints_min = 1
-    npoints_max = 500
-    step = 1
+    fwhm_min = 0.01e9
+    fwhm_max = 20.1e9
+    fwhm_nsteps = 1000
 
     xsec_name = (
-        f"{xsecs['low']['longname']}_{xsecs['low']['fmin']:.0f}"
-        f"-{xsecs['low']['fmax']:.0f}_{xsecs['low']['temperature']:.1f}K_"
+        f"{xsecs['low']['longname']}_"
+        f"{frequency2wavenumber(xsecs['low']['fmin'])/100.:.0f}"
+        f"-{frequency2wavenumber(xsecs['low']['fmax'])/100.:.0f}_"
+        f"{xsecs['low']['temperature']:.1f}K_"
         f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
-        f"{xsecs['high']['pressure']:.0f}P_{npoints_max}")
+        f"{xsecs['high']['pressure']:.0f}P")
     logging.info(f"Calc {xsec_name}")
 
-    rms = numpy.zeros((round((npoints_max - npoints_min) / step),))
-    npoints_arr = range(npoints_min, npoints_max, step)
+    rms = numpy.zeros((fwhm_nsteps,))
+    fwhms = numpy.linspace(fwhm_min, fwhm_max, fwhm_nsteps, endpoint=True)
 
     fgrid_conv = numpy.linspace(xsecs['low']['fmin'],
                                 xsecs['low']['fmax'],
@@ -512,19 +471,26 @@ def optimize_xsec(xsec_low, xsec_high):
                       f"{xsecs['high']['nfreq']} "
                       f"datasize: {len(xsecs['high']['data'])} "
                       f"header: {xsecs['high']['header']}")
-        return {}
+        return None
 
-    for i, npoints in enumerate(npoints_arr):
-        xsecs['conv'] = xsec_convolve(xsecs['low'], npoints, run_lorentz)
+    for i, fwhm in enumerate(fwhms):
+        # logging.info(f"Calculating {fwhm/1e9:.3f} for {xsec_name}")
+        xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'], fwhm / 2,
+                                                     run_lorentz_f,
+                                                     _lorentz_cutoff)
+        # logging.info(f"Calculating done {fwhm/1e9:.3f} for {xsec_name}")
+        if width < 10:
+            logging.warning(
+                f"Very few ({width}) points used in Lorentz function for "
+                f"{xsec_name} at FWHM {fwhm/1e9:.2} GHz.")
 
         xsecs['high_interp'] = xsecs['conv'].copy()
         xsecs['high_interp']['data'] = numpy.interp(fgrid_conv, fgrid_high,
                                                     xsecs['high']['data'])
 
-        rms[i] = calc_xsec_rms(xsecs['conv'],
-                               xsecs['high_interp'])
+        rms[i] = calc_xsec_rms(xsecs['conv'], xsecs['high_interp'])
 
-    rms_min_n = npoints_arr[numpy.argmin(rms)]
+    rms_optimum_fwhm = fwhms[numpy.argmin(rms)]
 
     logging.info(f"Done {xsec_name}")
 
@@ -536,10 +502,10 @@ def optimize_xsec(xsec_low, xsec_high):
         'fmin': float(xsecs['low']['fmin']),
         'fmax': float(xsecs['low']['fmax']),
         'nfreq': int(xsecs['low']['nfreq']),
-        'optimum_width': int(rms_min_n),
-        'npoints_min': int(npoints_min),
-        'npoints_max': int(npoints_max),
-        'npoints_step': int(step),
+        'optimum_fwhm': rms_optimum_fwhm,
+        'fwhm_min': fwhm_min,
+        'fwhm_max': fwhm_max,
+        'fwhm_nsteps': int(fwhm_nsteps),
         'rms': rms.tolist(),
     }
 
@@ -552,17 +518,26 @@ def xsec_select(xsecs, freq, freq_epsilon, temp, temp_epsilon):
     return sorted(xsec_sel, key=lambda xsec: xsec['pressure'])
 
 
-def combine_inputs(infiles, temps, freqs, name):
+def combine_inputs(filepattern, temps, freqs, name):
     """Create list of inputs.
 
     Puts low pressure and high pressure data together in pairs.
     """
-    infiles = glob.glob(infiles)
+    if isinstance(filepattern, str):
+        infiles = glob.glob(filepattern)
+    else:
+        infiles = []
+        for i in filepattern:
+            infiles.extend(glob.glob(i))
     xsecs = [read_hitran_xsec(f) for f in infiles]
     inputs = []
     for temperature in temps:
         for freq in freqs:
-            xsecs_sel = xsec_select(xsecs, freq, 10, temperature, 2)
+            xsecs_sel = xsec_select(
+                xsecs,
+                wavenumber2frequency(freq * 100),
+                wavenumber2frequency(10 * 100),
+                temperature, 2)
             for t in ((xsecs_sel[0], x2, name) for x2 in xsecs_sel[1:]):
                 inputs.append(t)
     return inputs
@@ -583,7 +558,7 @@ def print_usage():
     print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
           '\n'
           '  COMMAND: rms, scatter or plot\n'
-          '  SPECIES: CFC11,12 or 13')
+          '  SPECIES: CFC11, CFC12 or HCFC22')
 
 
 def main():
@@ -591,7 +566,8 @@ def main():
                         format='%(asctime)s:%(levelname)s: %(message)s',
                         datefmt='%b %d %H:%M:%S')
 
-    p = mp.Pool()
+    p = mp.Pool(processes=16)
+    # p = mp.Pool()
 
     logging.info('Reading cross section files')
     if len(sys.argv) > 3 and sys.argv[2] == 'CFC11':
@@ -608,12 +584,12 @@ def main():
             (190, 201, 208, 216, 225, 232, 246, 260, 268, 272),
             (800, 850, 1050),
             species)
-    elif len(sys.argv) > 3 and sys.argv[2] == 'CFC13':
+    elif len(sys.argv) > 3 and sys.argv[2] == 'HCFC22':
         species = sys.argv[2]
         inputs = combine_inputs(
-            'cfc13/*01.xsc',
-            (203, 213, 233, 253, 273, 293),
-            (765, 1065, 1170),
+            ['hcfc22/*1070*02.xsc', 'hcfc22/*760*02.xsc'],
+            (181, 190, 200, 208, 216, 225, 233, 251, 296),
+            (760, 1070,),
             species)
     else:
         print_usage()
@@ -628,14 +604,65 @@ def main():
         a = inputs[0][0]
         b = inputs[76][0]
         ax1.set_title('CFC11')
-        ax1.plot(a['data'], label=f"T: {a['temperature']:.0f}", rasterized=True)
-        ax1.plot(b['data'], label=f"T: {b['temperature']:.0f}", rasterized=True)
+        ax1.plot(a['data'],
+                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
+                 rasterized=True)
+        ax1.plot(b['data'],
+                 label=f"T: {b['temperature']:.0f}, p: {b['pressure']/100:.0f}",
+                 rasterized=True)
         ax1.set_xticks([])
         ax1.legend()
         ax2.plot((b['data'] - a['data']) / a['data'], rasterized=True)
         ax2.set_ylim([-1, 3])
         ax2.set_xticks([])
         fig.savefig('diff.pdf', dpi=300)
+    if command == 'debug2':
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        a = inputs[0][0]
+        ax1.set_title('CFC11')
+        fgrid = numpy.linspace(a['fmin'], a['fmax'], len(a['data']))
+        linewidth = 0.75
+        fwhm = 2.35e9
+        ax1.plot(a['data'],
+                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
+                 rasterized=True, linewidth=linewidth)
+        data, conv1, width = xsec_convolve_f(a, fwhm / 2, run_lorentz_f,
+                                             _lorentz_cutoff)
+        ax1.plot(data['data'],
+                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
+                 rasterized=True, linewidth=linewidth)
+        ax1.set_xticks([])
+        b = a.copy()
+        nth = 42
+        b['nfreq'] = a['nfreq'] / nth
+        print("fstep:",
+              (wavenumber2frequency(b['fmax'] - b['fmin']) / b[
+                  'nfreq'] * 100) / 1e9)
+        b['data'] = numpy.interp(fgrid[::nth], fgrid, a['data'])
+        ax1.legend()
+        ax2.plot(b['data'],
+                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
+                 rasterized=True, linewidth=linewidth)
+        data, conv2, width = xsec_convolve_f(b, fwhm / 2, run_lorentz_f,
+                                             _lorentz_cutoff)
+        ax2.plot(data['data'],
+                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
+                 rasterized=True, linewidth=linewidth)
+        ax2.legend()
+        ax2.set_ylim(ax1.get_ylim())
+        fwidth = a['nfreq'] * a['fmin'] * a['fmax']
+        ax3.plot(
+            numpy.linspace(0., fwidth, a['nfreq'], endpoint=True),
+            conv1,
+            label=f"lorentz 1",
+            rasterized=True, linewidth=linewidth)
+        ax3.plot(
+            numpy.linspace(0., fwidth, b['nfreq'], endpoint=True),
+            conv2,
+            label=f"lorentz 2",
+            rasterized=True, linewidth=linewidth)
+        ax3.legend()
+        fig.savefig('compare.pdf', dpi=300)
     elif command == 'rms':
         os.makedirs(outdir, exist_ok=True)
 
@@ -655,8 +682,8 @@ def main():
         fmin = []
         fmax = []
         for xsec in inputs:
-            if xsec[0]['temperature'] >= 230 and xsec[0][
-                'temperature'] <= 235 and xsec[0]['fmin'] not in fmin:
+            if (230 <= xsec[0]['temperature'] <= 235
+                    and xsec[0]['fmin'] not in fmin):
                 xsecs.append(xsec[0]['data'])
                 refpressure.append(xsec[0]['pressure'])
                 reftemperature.append(xsec[0]['temperature'])
@@ -665,15 +692,14 @@ def main():
 
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(results)
         popt, pcov, decision = do_fit(fwhm, pressure_diff)
-        xsec_data = typhon.arts.xsec.XsecRecord(sys.argv[2],
-                                                popt,
-                                                typhon.physics.wavenumber2frequency(
-                                                    numpy.array(fmin) * 100.),
-                                                typhon.physics.wavenumber2frequency(
-                                                    numpy.array(fmax) * 100.),
-                                                numpy.array(refpressure),
-                                                numpy.array(reftemperature),
-                                                xsecs)
+        xsec_data = typhon.arts.xsec.XsecRecord(
+            sys.argv[2],
+            popt,
+            wavenumber2frequency(numpy.array(fmin) * 100.),
+            wavenumber2frequency(numpy.array(fmax) * 100.),
+            numpy.array(refpressure),
+            numpy.array(reftemperature),
+            xsecs)
         typhon.arts.xml.save((xsec_data,),
                              os.path.join(outdir, sys.argv[2] + '.xml'))
 
@@ -685,8 +711,6 @@ def main():
         logging.info(f'Loading results from {outfile}')
         results = load_output(outfile)
         logging.info(f'Creating scatter plot and fit')
-        if len(sys.argv) >= 4:
-            plotname = sys.argv[3]
         scatter_and_fit(results, species, outdir)
     elif command == 'plot':
         logging.info(f'Loading results from {outfile}')
@@ -696,7 +720,7 @@ def main():
                              (*args, result, ioutdir))
                for args, result, ioutdir in
                zip(inputs, results, itertools.repeat(outdir))]
-        results = [r.get() for r in res if r]
+        [r.get() for r in res if r]
     else:
         print_usage()
         sys.exit(1)
