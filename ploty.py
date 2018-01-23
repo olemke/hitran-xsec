@@ -25,20 +25,23 @@ def lorentz_pdf(x, x0, gamma):
 # print(numpy.sum(y))
 # plt.show()
 # exit(0)
-xsec_orig = axml.load('../output_cfc12/CFC12.xml')
+xsec_orig = axml.load('output_cfc12/CFC12.xml')
 # fwhm = func_2straights([86993], *xsec[0].coeffs);
 # print(fwhm)
 # print(lorentz_pdf(24e12, 24e12, fwhm / 2))
 
-fgrid = axml.load('TestHitranXsec.f_grid.xml')
-fgrid_s = axml.load('TestHitranXsec-simple.f_grid.xml')
-xsec = axml.load('TestHitranXsec-simple.abs_xsec_per_species.xml')
-y = axml.load('TestHitranXsec.y.xml')
+inputdir = "arts-example/"
+fgrid = axml.load(inputdir + 'TestHitranXsec.f_grid.xml')
+fgrid_s = axml.load(inputdir + 'TestHitranXsec-simple.f_grid.xml')
+xsec = axml.load(inputdir + 'TestHitranXsec-simple.abs_xsec_per_species.xml')
+y = axml.load(inputdir + 'TestHitranXsec.y.xml')
 print("nfgrid:", len(fgrid_s))
 print("orig nfgrid: ", len(xsec_orig[0].xsec[0]))
 # plt.plot(typhon.physics.frequency2wavenumber(fgrid)/100, y, linewidth=0.5)  # , rasterized=True)
-plt.plot(fgrid_s / 1e12, xsec[0][:,0], label="1", linewidth=0.5, rasterized=True)
-plt.plot(fgrid_s / 1e12, xsec[0][:,1], label="2", linewidth=0.5, rasterized=True)
+plt.plot(fgrid_s / 1e12, xsec[0][:, 0], label="1", linewidth=0.75,
+         rasterized=True)
+plt.plot(fgrid_s / 1e12, xsec[0][:, 1], label="2", linewidth=0.75,
+         rasterized=True)
 xi = 0
 # plt.plot(numpy.linspace(xsec_orig[0].fmin[xi], xsec_orig[0].fmax[xi],
 #                         num=len(xsec_orig[0].xsec[xi])) / 1e12, xsec_orig[0].xsec[xi],
