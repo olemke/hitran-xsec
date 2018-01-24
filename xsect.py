@@ -21,10 +21,10 @@ import typhon.arts.xsec
 from typhon.physics import frequency2wavenumber, wavenumber2frequency
 from scipy.optimize import curve_fit
 from scipy.signal import fftconvolve
+from scipy.integrate import simps
 
 import matplotlib.pyplot as plt
 
-# _lorentz_cutoff = 1./1000.
 _lorentz_cutoff = None
 
 
@@ -66,7 +66,8 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     if kwargs is None:
         kwargs = {}
 
-    # ax.set_ylim((0, 6))
+    ax.set_ylim((0, 6))
+    ax.set_xlim((0, 1100))
     ax.scatter(pressure_diff / 100, fwhm / 1e9, **kwargs)
     ax.set_ylabel('FWHM of Lorentz filter [GHz]')
     ax.set_xlabel('∆P [hPa]')
@@ -90,20 +91,15 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=True):
         decision = forrest.predict(data) != -1
     else:
         decision = numpy.ones_like(fwhm, dtype='bool')
+    # Apriori for fitting the two lines
+    p0 = (30000., 1e6, 1e6)
     # noinspection PyTypeChecker
     popt, pcov = curve_fit(fit_func, pressure_diff[decision], fwhm[decision],
-                           p0=(30000., 1e6, 1e6))
+                           p0=p0)
     return popt, pcov, decision
 
 
 def plot_fit(ax, fwhm, pressure_diff, outliers=True):
-    # fit_func = func_bent_line
-    # popt, pcov = curve_fit(fit_func, pressure_diff, fwhm)
-
-    # p0=(300, 1e+06, 1e+06))
-    # p0=(1, 1, 1, 0.5))
-    # p0=(3e8, 2.16e-03, 1.04e+00))
-    # p0=(-7e+10, 3.5e+09, 2e+06, 1e+09))
     fit_func = func_2straights
     popt, pcov, decision = do_fit(fwhm, pressure_diff, fit_func=fit_func,
                                   outliers=outliers)
@@ -153,22 +149,30 @@ def scatter_and_fit(xsec_result, species, datadir):
                          xsec_select_band(xsec_result, flower=1000)),
                      species, label='1050-1200')
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(xsec_result)
-        # s = fwhm < 5e9
-        # fwhm = fwhm[s]
-        # pressure_diff = pressure_diff[s]
         plot_fit(ax, fwhm, pressure_diff)
     elif species == 'HCFC22':
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
                          xsec_select_band(xsec_result,
-                                          flower=750, fupper=870)),
+                                          flower=725, fupper=1385)),
+                     species, label='730-1380')
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         xsec_select_band(xsec_result,
+                                          flower=755, fupper=865)),
                      species, label='760-860')
         scatter_plot(ax,
                      *calc_fwhm_and_pressure_difference(
                          xsec_select_band(xsec_result,
-                                          flower=1060, fupper=1200)),
+                                          flower=1065, fupper=1200)),
                      species, label='1070-1195')
         plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result))
+    elif species == 'HFC134a':
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         xsec_select_band(xsec_result,
+                                          flower=745, fupper=1605)),
+                     species, label='750-1600')
     else:
         raise RuntimeError('Unknown species')
 
@@ -234,21 +238,11 @@ def hitran_raw_xsec_to_dict(header, data):
     xsec_dict['header'] = header
     xsec_dict['data'] = data
     # Recalculate number of frequency points based on actual data values since
-    # header information if not correct for some files
+    # header information is not correct for some files
     xsec_dict['nfreq'] = len(data)
     xsec_dict['pressure'] = torr_to_pascal(xsec_dict['pressure'])
     xsec_dict['fmin'] = wavenumber2frequency(xsec_dict['fmin'] * 100)
     xsec_dict['fmax'] = wavenumber2frequency(xsec_dict['fmax'] * 100)
-
-    # if xsec_dict['nfreq'] < 150000:
-    #     xsec_dict['data'] = numpy.interp(
-    #         numpy.linspace(xsec_dict['fmin'], xsec_dict['fmax'], num=200000,
-    #                        endpoint=True),
-    #         numpy.linspace(xsec_dict['fmin'], xsec_dict['fmax'],
-    #                        num=xsec_dict['nfreq'], endpoint=True),
-    #         data
-    #     )
-    #     xsec_dict['nfreq'] = 200000
 
     return xsec_dict
 
@@ -264,32 +258,23 @@ def read_hitran_xsec(filename):
 
 
 def torr_to_pascal(torr):
-    return torr * 101325 / 760
+    return torr * 101325. / 760.
 
 
-def plot_available_xsecs():
-    files = 'cfc11/*.xsc'
-    data = {}
-
-    for f in map(open, glob.iglob(files)):
-        name = f.readline()
-        data[name] = numpy.hstack(
-            list(map(convert_line_to_float, f.readlines())))
-
-    xsecs = list(map(lambda x: hitran_raw_xsec_to_dict(x, data[x]), data))
+def plot_available_xsecs(inputs, title, outdir):
     fig, ax = plt.subplots()
-    xsecs_sel = [x for x in xsecs if x['fmin'] < 1000]
-    ax.scatter([x['temperature'] for x in xsecs_sel],
-               numpy.array([x['pressure'] for x in xsecs_sel]),
-               alpha=0.5)
-    xsecs_sel = [x for x in xsecs if x['fmin'] >= 1000]
-    ax.scatter([x['temperature'] for x in xsecs_sel],
-               numpy.array([x['pressure'] for x in xsecs_sel]),
-               alpha=0.5)
+    ax.scatter([x[0]['temperature'] for x in inputs],
+               numpy.array([x[0]['pressure'] for x in inputs]),
+               label='reference pressure')
+    ax.scatter([x[1]['temperature'] for x in inputs],
+               numpy.array([x[1]['pressure'] for x in inputs]),
+               label='target pressures')
     ax.yaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
     ax.invert_yaxis()
+    ax.set_title(title)
+    ax.legend()
 
-    plt.savefig('available.pdf')
+    plt.savefig(os.path.join(outdir, 'available.pdf'))
 
 
 def plot_xsec(ax, xsec, **kwargs):
@@ -320,7 +305,10 @@ def run_lorentz_f(npoints, fstep, hwhm, cutoff=None):
         hwhm)
     if cutoff is not None:
         ret = ret[ret > numpy.max(ret) * cutoff]
-    return ret / numpy.sum(ret)
+    if len(ret) > 1:
+        return ret / simps(ret)
+    else:
+        return numpy.array([1.])
 
 
 def xsec_convolve_f(xsec1, hwhm, convfunc, cutoff=None):
@@ -385,7 +373,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
         ax.plot((fwhms[rms_min_i] / 1e9, fwhms[rms_min_i] / 1e9),
                 (numpy.min(rms), numpy.max(rms)),
                 linewidth=1,
-                label=f'Minimum RMS {rms_min:.2e}"'
+                label=f'Minimum RMS {rms_min:.2e}'
                       f'@{fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     ax.plot(fwhms / 1e9, rms,
@@ -443,7 +431,7 @@ def optimize_xsec(xsec_low, xsec_high):
     }
 
     fwhm_min = 0.01e9
-    fwhm_max = 20.1e9
+    fwhm_max = 20.01e9
     fwhm_nsteps = 1000
 
     xsec_name = (
@@ -558,7 +546,7 @@ def print_usage():
     print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
           '\n'
           '  COMMAND: rms, scatter or plot\n'
-          '  SPECIES: CFC11, CFC12 or HCFC22')
+          '  SPECIES: CFC11, CFC12, HFC134a or HCFC22')
 
 
 def main():
@@ -587,9 +575,16 @@ def main():
     elif len(sys.argv) > 3 and sys.argv[2] == 'HCFC22':
         species = sys.argv[2]
         inputs = combine_inputs(
-            ['hcfc22/*1070*02.xsc', 'hcfc22/*760*02.xsc'],
-            (181, 190, 200, 208, 216, 225, 233, 251, 296),
-            (760, 1070,),
+            ['hcfc22/*_730*.xsc', 'hcfc22/*_760*.xsc', 'hcfc22/*_1070*.xsc'],
+            (181, 190, 200, 208, 216, 225, 233, 251, 270, 296),
+            (730, 760, 1070,),
+            species)
+    elif len(sys.argv) > 3 and sys.argv[2] == 'HFC134a':
+        species = sys.argv[2]
+        inputs = combine_inputs(
+            ['hfc134a/*_750*.xsc'],
+            (190, 200, 216, 231, 250, 270, 295),
+            (750,),
             species)
     else:
         print_usage()
@@ -663,6 +658,9 @@ def main():
             rasterized=True, linewidth=linewidth)
         ax3.legend()
         fig.savefig('compare.pdf', dpi=300)
+    elif command == 'avail':
+        os.makedirs(outdir, exist_ok=True)
+        plot_available_xsecs(inputs, species, outdir)
     elif command == 'rms':
         os.makedirs(outdir, exist_ok=True)
 
