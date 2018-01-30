@@ -66,9 +66,7 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     if kwargs is None:
         kwargs = {}
 
-    ax.set_ylim((0, 6))
-    ax.set_xlim((0, 1100))
-    ax.scatter(pressure_diff / 100, fwhm / 1e9, **kwargs)
+    ax.scatter(pressure_diff, fwhm / 1e9, **kwargs)
     ax.set_ylabel('FWHM of Lorentz filter [GHz]')
     ax.set_xlabel('∆P [hPa]')
 
@@ -104,79 +102,53 @@ def plot_fit(ax, fwhm, pressure_diff, outliers=True):
     popt, pcov, decision = do_fit(fwhm, pressure_diff, fit_func=fit_func,
                                   outliers=outliers)
     p = numpy.linspace(numpy.min(pressure_diff), numpy.max(pressure_diff), 200)
-    ax.plot(p / 100,
+    ax.plot(p,
             fit_func(p, *popt) / 1e9,
             label=f'fit: 2straights\n'
                   f'x0 = {popt[0]:.2f}\n'
                   f'a = {popt[1]:.2e}\n'
                   f'b = {popt[2]:.2e}\n')
-    ax.scatter(pressure_diff[~decision] / 100, fwhm[~decision] / 1e9,
+    ax.scatter(pressure_diff[~decision], fwhm[~decision] / 1e9,
                color='red')
+    ax.xaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
 
 
-def xsec_select_band(xsec_result, flower=0, fupper=numpy.Inf):
+def xsec_select_band(xsec_result, band):
     return [x for x in xsec_result if
-            flower < frequency2wavenumber(x['fmin'] / 100) < fupper]
+            band[0] - 1. < frequency2wavenumber(x['fmin'] / 100) < band[1] + 1.]
 
 
 def scatter_and_fit(xsec_result, species, datadir):
     fig, ax = plt.subplots()
 
     if species == 'CFC11':
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=800,
-                                          fupper=1000)),
-                     species, label='810-880')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=1000)),
-                     species, label='1050-1120')
-        plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result),
-                 outliers=False)
+        bands = ((810, 880), (1050, 1120))
+        outliers = False
     elif species == 'CFC12':
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, fupper=840)),
-                     species, label='800-1270')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=840,
-                                          fupper=1000)),
-                     species, label='850-950')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result, flower=1000)),
-                     species, label='1050-1200')
-        fwhm, pressure_diff = calc_fwhm_and_pressure_difference(xsec_result)
-        plot_fit(ax, fwhm, pressure_diff)
+        bands = ((800, 1270), (850, 950), (1050, 1200))
+        outliers = True
     elif species == 'HCFC22':
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result,
-                                          flower=725, fupper=1385)),
-                     species, label='730-1380')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result,
-                                          flower=755, fupper=865)),
-                     species, label='760-860')
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result,
-                                          flower=1065, fupper=1200)),
-                     species, label='1070-1195')
-        plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result))
+        bands = ((730, 1380), (760, 860), (1070, 1195))
+        outliers = False
     elif species == 'HFC134a':
-        scatter_plot(ax,
-                     *calc_fwhm_and_pressure_difference(
-                         xsec_select_band(xsec_result,
-                                          flower=745, fupper=1605)),
-                     species, label='750-1600')
+        bands = ((750, 1600), (1035, 1130), (1135, 1140))
+        outliers = False
     else:
         raise RuntimeError('Unknown species')
 
+    for band in bands:
+        scatter_plot(ax,
+                     *calc_fwhm_and_pressure_difference(
+                         xsec_select_band(xsec_result, band=band)),
+                     species, label=f'{band[0]}-{band[1]}')
+    plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result),
+             outliers=outliers)
+
     ax.legend()
+
+    ax.set_ylim((0, 6))
+    ax.set_xlim((0, 110000))
+    ax.xaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
 
     fig.savefig(os.path.join(datadir, 'xsec_scatter.pdf'))
     plt.close(fig)
@@ -202,6 +174,10 @@ def scatter_and_fit(xsec_result, species, datadir):
                  species, label='270K < T')
 
     ax.legend()
+
+    ax.set_ylim((0, 6))
+    ax.set_xlim((0, 110000))
+    ax.xaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
 
     fig.savefig(os.path.join(datadir, 'xsec_scatter_temp.pdf'))
     plt.close(fig)
@@ -272,9 +248,11 @@ def plot_available_xsecs(inputs, title, outdir):
     ax.yaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
     ax.invert_yaxis()
     ax.set_title(title)
+    ax.set_xlabel('T [K]')
+    ax.set_ylabel('P [hPa]')
     ax.legend()
 
-    plt.savefig(os.path.join(outdir, 'available.pdf'))
+    plt.savefig(os.path.join(outdir, 'xsec_datasets.pdf'))
 
 
 def plot_xsec(ax, xsec, **kwargs):
@@ -545,7 +523,7 @@ def load_output(filename):
 def print_usage():
     print(f'usage: {sys.argv[0]} COMMAND SPECIES OUTDIR\n'
           '\n'
-          '  COMMAND: rms, scatter or plot\n'
+          '  COMMAND: rms, scatter, plot or avail\n'
           '  SPECIES: CFC11, CFC12, HFC134a or HCFC22')
 
 
@@ -577,14 +555,15 @@ def main():
         inputs = combine_inputs(
             ['hcfc22/*_730*.xsc', 'hcfc22/*_760*.xsc', 'hcfc22/*_1070*.xsc'],
             (181, 190, 200, 208, 216, 225, 233, 251, 270, 296),
-            (730, 760, 1070,),
+            (730, 760, 1070),
             species)
     elif len(sys.argv) > 3 and sys.argv[2] == 'HFC134a':
         species = sys.argv[2]
         inputs = combine_inputs(
-            ['hfc134a/*_750*.xsc'],
-            (190, 200, 216, 231, 250, 270, 295),
-            (750,),
+            ['hfc134a/*_750*.xsc', 'hfc134a/*_1035*.xsc',
+             'hfc134a/*_1135*.xsc'],
+            (190, 200, 208, 216, 225, 231, 245, 250, 261, 271, 284, 295),
+            (750, 1035, 1135),
             species)
     else:
         print_usage()
@@ -594,74 +573,7 @@ def main():
     outdir = sys.argv[3]
     outfile = os.path.join(outdir, 'output.txt')
 
-    if command == 'debug':
-        fig, (ax1, ax2) = plt.subplots(2, 1)
-        a = inputs[0][0]
-        b = inputs[76][0]
-        ax1.set_title('CFC11')
-        ax1.plot(a['data'],
-                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
-                 rasterized=True)
-        ax1.plot(b['data'],
-                 label=f"T: {b['temperature']:.0f}, p: {b['pressure']/100:.0f}",
-                 rasterized=True)
-        ax1.set_xticks([])
-        ax1.legend()
-        ax2.plot((b['data'] - a['data']) / a['data'], rasterized=True)
-        ax2.set_ylim([-1, 3])
-        ax2.set_xticks([])
-        fig.savefig('diff.pdf', dpi=300)
-    if command == 'debug2':
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-        a = inputs[0][0]
-        ax1.set_title('CFC11')
-        fgrid = numpy.linspace(a['fmin'], a['fmax'], len(a['data']))
-        linewidth = 0.75
-        fwhm = 2.35e9
-        ax1.plot(a['data'],
-                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
-                 rasterized=True, linewidth=linewidth)
-        data, conv1, width = xsec_convolve_f(a, fwhm / 2, run_lorentz_f,
-                                             _lorentz_cutoff)
-        ax1.plot(data['data'],
-                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
-                 rasterized=True, linewidth=linewidth)
-        ax1.set_xticks([])
-        b = a.copy()
-        nth = 42
-        b['nfreq'] = a['nfreq'] / nth
-        print("fstep:",
-              (wavenumber2frequency(b['fmax'] - b['fmin']) / b[
-                  'nfreq'] * 100) / 1e9)
-        b['data'] = numpy.interp(fgrid[::nth], fgrid, a['data'])
-        ax1.legend()
-        ax2.plot(b['data'],
-                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
-                 rasterized=True, linewidth=linewidth)
-        data, conv2, width = xsec_convolve_f(b, fwhm / 2, run_lorentz_f,
-                                             _lorentz_cutoff)
-        ax2.plot(data['data'],
-                 label=f"T: {a['temperature']:.0f}, p: {a['pressure']/100:.0f}",
-                 rasterized=True, linewidth=linewidth)
-        ax2.legend()
-        ax2.set_ylim(ax1.get_ylim())
-        fwidth = a['nfreq'] * a['fmin'] * a['fmax']
-        ax3.plot(
-            numpy.linspace(0., fwidth, a['nfreq'], endpoint=True),
-            conv1,
-            label=f"lorentz 1",
-            rasterized=True, linewidth=linewidth)
-        ax3.plot(
-            numpy.linspace(0., fwidth, b['nfreq'], endpoint=True),
-            conv2,
-            label=f"lorentz 2",
-            rasterized=True, linewidth=linewidth)
-        ax3.legend()
-        fig.savefig('compare.pdf', dpi=300)
-    elif command == 'avail':
-        os.makedirs(outdir, exist_ok=True)
-        plot_available_xsecs(inputs, species, outdir)
-    elif command == 'rms':
+    if command == 'rms':
         os.makedirs(outdir, exist_ok=True)
 
         logging.info(f'Calculating RMS')
@@ -681,7 +593,8 @@ def main():
         fmax = []
         for xsec in inputs:
             if (230 <= xsec[0]['temperature'] <= 235
-                    and xsec[0]['fmin'] not in fmin):
+                    and xsec[0]['fmin'] not in fmin
+                    and xsec[0]['pressure'] < 2000):
                 xsecs.append(xsec[0]['data'])
                 refpressure.append(xsec[0]['pressure'])
                 reftemperature.append(xsec[0]['temperature'])
@@ -693,14 +606,17 @@ def main():
         xsec_data = typhon.arts.xsec.XsecRecord(
             sys.argv[2],
             popt,
-            wavenumber2frequency(numpy.array(fmin) * 100.),
-            wavenumber2frequency(numpy.array(fmax) * 100.),
+            numpy.array(fmin),
+            numpy.array(fmax),
             numpy.array(refpressure),
             numpy.array(reftemperature),
             xsecs)
         typhon.arts.xml.save((xsec_data,),
                              os.path.join(outdir, sys.argv[2] + '.xml'))
 
+    elif command == 'avail':
+        os.makedirs(outdir, exist_ok=True)
+        plot_available_xsecs(inputs, species, outdir)
     elif command == 'testarts':
         xsecdata = typhon.arts.xml.load(
             os.path.join(outdir, sys.argv[2] + '.xml'))
