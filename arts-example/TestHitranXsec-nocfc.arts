@@ -97,10 +97,6 @@ VectorNLogSpace( p_grid, 100, 1000e2, 1 )
 #             "N2-SelfContStandardType",
 #             "O3"] )
 abs_speciesSet(species=[
-"CFC11-HXSEC",
-"CFC12-HXSEC",
-"HFC134a-HXSEC",
-"HCFC22-HXSEC",
         "H2O, H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252",
         "O2, O2-CIAfunCKDMT100",
         "O3",
@@ -187,12 +183,11 @@ MatrixSet( sensor_los, [180] )
 abs_xsec_agenda_checkedCalc
 atmfields_checkedCalc
 
-abs_lookupSetup
+#abs_lookupSetup
 timerStart
-#ReadXML( abs_lookup, "TestHitranXsec.lookup.xml")
-#abs_lookupAdapt
-abs_lookupCalc
-WriteXML( "binary", abs_lookup, "TestHitranXsec.lookup.xml")
+ReadXML( abs_lookup, "TestHitranXsec.lookup.xml")
+abs_lookupAdapt
+#WriteXML( "binary", abs_lookup, "TestHitranXsec.lookup.xml")
 timerStop
 Print(timer, 1)
 

@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <arts format="ascii" version="1">
 <GriddedField3>
-<Vector nelem="45" name="Pressure">
+<Vector name="Pressure" nelem="46">
+              110000
               101300
                90400
                80500
@@ -48,13 +49,14 @@
                0.172
  0.06900000000000001
 </Vector>
-<Vector nelem="1" name="Latitude">
+<Vector name="Latitude" nelem="1">
                    0
 </Vector>
-<Vector nelem="1" name="Longitude">
+<Vector name="Longitude" nelem="1">
                    0
 </Vector>
-<Tensor3 npages="45" nrows="1" ncols="1">
+<Tensor3 name="VMR" npages="46" nrows="1" ncols="1">
+2.595108e-02
 2.595108e-02
 1.950403e-02
 1.535123e-02
