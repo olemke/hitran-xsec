@@ -1,12 +1,12 @@
 import glob
-import itertools
 import json
 import logging
 import multiprocessing as mp
 import os
-import sys
 
+import itertools
 import matplotlib as mpl
+import sys
 from sklearn.ensemble import IsolationForest
 
 mpl.use('Agg')  # noqa
@@ -591,16 +591,39 @@ def main():
         reftemperature = []
         fmin = []
         fmax = []
-        for xsec in inputs:
-            if (230 <= xsec[0]['temperature'] <= 235
-                    and xsec[0]['fmin'] not in fmin
-                    and xsec[0]['pressure'] < 2000):
-                xsecs.append(xsec[0]['data'])
-                refpressure.append(xsec[0]['pressure'])
-                reftemperature.append(xsec[0]['temperature'])
-                fmin.append(xsec[0]['fmin'])
-                fmax.append(xsec[0]['fmax'])
 
+        if sys.argv[2] == 'HFC134a':
+            xsec_refs = ((750, 1600, 250, 3266),)
+        elif sys.argv[2] == 'HCFC22':
+            xsec_refs = ((730, 1380, 232, 1000),)
+        elif sys.argv[2] == 'CFC11':
+            xsec_refs = ((810, 880, 231, 1000),
+                         (1050, 1120, 231, 1000),)
+        elif sys.argv[2] == 'CFC12':
+            xsec_refs = ((800, 1270, 233, 1000),)
+
+        for xsec_ref in xsec_refs:
+            for xsec in inputs:
+                if (xsec_ref[2] - 1 <= xsec[0]['temperature'] <= xsec_ref[2] + 1
+                        and xsec_ref[0] - 1 <= frequency2wavenumber(
+                            xsec[0]['fmin']) / 100 <= xsec_ref[0] + 1
+                        and xsec_ref[1] - 1 <= frequency2wavenumber(
+                            xsec[0]['fmax']) / 100 <= xsec_ref[1] + 1
+                        and xsec_ref[3] - 1 <= xsec[0]['pressure'] <= xsec_ref[
+                            3] + 1
+                        and xsec[0]['fmin'] not in fmin
+                        and xsec[0]['fmax'] not in fmax):
+                    xsecs.append(
+                        xsec[0]['data'] / 10000.)  # Convert to m2 for ARTS
+                    refpressure.append(xsec[0]['pressure'])
+                    reftemperature.append(xsec[0]['temperature'])
+                    fmin.append(xsec[0]['fmin'])
+                    fmax.append(xsec[0]['fmax'])
+
+        if not len(xsecs):
+            raise RuntimeError('No matching xsecs found.')
+
+        print(f'{len(xsec)} profiles selected.')
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(results)
         popt, pcov, decision = do_fit(fwhm, pressure_diff)
         xsec_data = typhon.arts.xsec.XsecRecord(
