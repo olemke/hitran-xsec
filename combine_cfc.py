@@ -34,6 +34,14 @@ def combine_xsec(outfile):
 
     axml.save(cfcs, outfile + '.xml', format='binary')
 
+    avg_coeffs = numpy.sum(numpy.array([x.coeffs for x in cfcs]), axis=0) / len(
+        cfcs)
+    for x in cfcs:
+        x.coeffs = avg_coeffs
+
+    print(f'Average coeffs: {avg_coeffs}')
+    axml.save(cfcs, outfile + '.avg.xml', format='binary')
+
 
 def plot_xsec(inputfile):
     xsecs = axml.load(inputfile + '.xml')
@@ -48,7 +56,8 @@ def plot_xsec(inputfile):
         for fmin, fmax, xsecdata in zip(xsec.fmin, xsec.fmax, xsec.xsec):
             ax.plot(numpy.linspace(fmin, fmax, len(xsecdata), endpoint=True),
                     xsecdata, label=f'{xsec.species} '
-                                    f'{f2w(fmin):.0f}-{f2w(fmax):.0f}')
+                                    f'{f2w(fmin):.0f}-{f2w(fmax):.0f}',
+                    rasterized=True)
 
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(hz2thz))
     ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1g'))
@@ -56,7 +65,7 @@ def plot_xsec(inputfile):
     ax.set_ylabel('Cross section [m$^2$]')
     ax2.set_xlabel('Wavenumber [cm$^{-1}$]')
     ax.legend()
-    fig.savefig(inputfile + '.pdf', boundary_box='tight')
+    fig.savefig(inputfile + '.pdf', dpi=300)
 
 
 if __name__ == '__main__':
