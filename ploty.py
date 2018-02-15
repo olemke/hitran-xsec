@@ -1,10 +1,13 @@
 import functools
+import os
+import sys
 
 import matplotlib.pyplot as plt
 import numpy
 import typhon.arts.xml as axml
 from matplotlib import ticker
 from matplotlib.ticker import FuncFormatter
+from scipy.integrate import simps as integrate
 from typhon.physics import frequency2wavenumber
 
 
@@ -59,52 +62,121 @@ def plot_spectrum(ax, x, y, **kwargs):
     return ax2
 
 
-inputdir = "arts-example/"
-fgrid_s = axml.load(inputdir + 'TestHitranXsec-simple.f_grid.xml')
-xsec = axml.load(inputdir + 'TestHitranXsec-simple.abs_xsec_per_species.xml')
-species_names = axml.load(inputdir + 'TestHitranXsec-simple.abs_species.xml')
+def plot_xsec(inputdir):
+    fgrid_s = axml.load(
+        os.path.join(inputdir, 'TestHitranXsec-simple.f_grid.xml'))
+    xsec = axml.load(
+        os.path.join(inputdir,
+                     'TestHitranXsec-simple.abs_xsec_per_species.xml'))
+    species_names = axml.load(
+        os.path.join(inputdir, 'TestHitranXsec-simple.abs_species.xml'))
 
-fig, ax = plt.subplots()
+    fig, ax = plt.subplots()
 
-for species, name in zip(xsec, species_names):
-    for band in range(species.shape[1]):
-        ax.plot(fgrid_s, species[:, band],
-                label=f"{name[0].split('-')[0]} {band}", linewidth=0.75)
+    for species, name in zip(xsec, species_names):
+        for band in range(species.shape[1]):
+            ax.plot(fgrid_s, species[:, band],
+                    label=f"{name[0].split('-')[0]} {band}", linewidth=0.75)
 
-ax.xaxis.set_major_formatter(THzFormatter())
-ax.set_xlabel('THz')
+    ax.xaxis.set_major_formatter(THzFormatter())
+    ax.set_xlabel('THz')
 
-fig.legend()
-fig.savefig('xsec.pdf', dpi=300)
+    fig.legend()
+    fig.savefig('xsec.pdf', dpi=300)
 
-#postfix = '.radiance'
-postfix = '.planck'
 
-fgrid = axml.load(inputdir + 'TestHitranXsec.f_grid' + postfix + '.xml')
-y = axml.load(inputdir + 'TestHitranXsec.y' + postfix + '.xml')
+def plot_y(directory):
+    fgrid = axml.load(os.path.join(directory, 'TestHitranXsec.f_grid.xml'))
+    y = axml.load(os.path.join(directory, 'TestHitranXsec.y.xml'))
 
-fgrid_nocfc = axml.load(
-    inputdir + 'TestHitranXsec-nocfc.f_grid' + postfix + '.xml')
-y_nocfc = axml.load(inputdir + 'TestHitranXsec-nocfc.y' + postfix + '.xml')
+    fgrid_nocfc = axml.load(
+        os.path.join(directory, 'TestHitranXsec-nocfc.f_grid.xml'))
+    y_nocfc = axml.load(os.path.join(directory, 'TestHitranXsec-nocfc.y.xml'))
 
-fig, (ax1, ax2) = plt.subplots(2, 1)  # , figsize=(5, 10))
+    if numpy.max(y) < 100:
+        unit = 'radiance'
+        ylabel = 'Spectral radiance $[\\frac{W}{sr⋅m^2⋅Hz}]$'
+        int_nocfc = integrate(y_nocfc, fgrid_nocfc)
+        int_cfc = integrate(y, fgrid)
+        nocfc_extra_label = f' Total: {int_nocfc:.2f} ' + '$\\frac{W}{sr⋅m^2}$'
+        cfc_extra_label = f' Total: {int_cfc:.2f} ' + '$\\frac{W}{sr⋅m^2}$'
+    else:
+        unit = 'bt'
+        ylabel = 'Brightness temperature $[B_T]$'
+        nocfc_extra_label = ''
+        cfc_extra_label = ''
 
-plot_spectrum(ax1, fgrid, y, label='w/ CFCs', rasterized=True)
-ax1.plot(fgrid_nocfc, y_nocfc, label='w/o CFCs', rasterized=True)
-ax1.xaxis.set_ticklabels([])
-ax1.set_xlabel('')
-if postfix == '.radiance':
-    ax1.set_ylabel('$[\\frac{W}{sr⋅m^2⋅Hz}]$')
-    ax2.set_ylabel('Spectral radiance')
-else:
-    ax1.set_ylabel('$[K]$')
-    ax2.set_ylabel('Brightness temperature')
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+    plt.subplots_adjust(hspace=0)
 
-ax1.legend()
+    fig.suptitle('Fascod profile without CFCs vs. with CFCs')
+    ax1a = plot_spectrum(ax1, fgrid_nocfc, y_nocfc, label='$y$' + nocfc_extra_label,
+                  rasterized=True)
+    ax1.plot(fgrid, y, label='$y_{cfc}$' + cfc_extra_label, rasterized=True)
+    ax1.set_ylabel(ylabel)
+    ax1.xaxis.set_ticks([])
+    ax1.set_xlabel('')
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['bottom'].set_visible(False)
+    ax1a.spines['right'].set_visible(False)
+    ax1a.spines['bottom'].set_visible(False)
 
-axtop = plot_spectrum(ax2, fgrid, y - y_nocfc, rasterized=True)
-axtop.xaxis.set_ticklabels([])
-axtop.set_xlabel('')
+    ax2.set_ylabel('Relative change $\\frac{y_{cfc} - y}{y} [\\%]$')
+    ax1.legend()
 
-fig.tight_layout()
-fig.savefig('y.pdf', dpi=300)
+    next(ax2._get_lines.prop_cycler)['color']
+    next(ax2._get_lines.prop_cycler)['color']
+    axtop = plot_spectrum(ax2, fgrid, (y - y_nocfc) / y_nocfc * 100,
+                          rasterized=True)
+    axtop.xaxis.set_ticks([])
+    axtop.set_xlabel('')
+    ax2.spines['right'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    axtop.spines['right'].set_visible(False)
+    axtop.spines['top'].set_visible(False)
+
+    # fig.tight_layout()
+    fig.savefig(os.path.join(directory, 'y.' + unit + '.pdf'), dpi=300)
+
+
+def plot_compare_coeffs(directory1, directory2):
+    fgrid1 = axml.load(os.path.join(directory1, 'TestHitranXsec.f_grid.xml'))
+    y1 = axml.load(os.path.join(directory1, 'TestHitranXsec.y.xml'))
+
+    fgrid2 = axml.load(os.path.join(directory2, 'TestHitranXsec.f_grid.xml'))
+    y2 = axml.load(os.path.join(directory2, 'TestHitranXsec.y.xml'))
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+
+    fig.suptitle(
+        'Species specific coefficients $C_s$ vs. averaged coefficients $C_a$')
+    plot_spectrum(ax1, fgrid1, y1, label='$C_s$', rasterized=True)
+    ax1.plot(fgrid2, y2, label='$C_a$', rasterized=True)
+    ax1.xaxis.set_ticklabels([])
+    ax1.set_xlabel('')
+
+    if numpy.max(y1) < 100:
+        unit = 'radiance'
+        ax1.set_ylabel('Spectral radiance $[\\frac{W}{sr⋅m^2⋅Hz}]$')
+    else:
+        unit = 'bt'
+        ax1.set_ylabel('Brightness temperature $[B_T]$')
+
+    ax2.set_ylabel('Relative change $\\frac{y_{C_a} - y_{C_s}}{y_{C_s}} [\\%]$')
+    ax1.legend()
+
+    axtop = plot_spectrum(ax2, fgrid1, (y2 - y1) / y1 * 100, rasterized=True)
+    axtop.xaxis.set_ticklabels([])
+    axtop.set_xlabel('')
+
+    fig.savefig(os.path.join('y_coeff_compare.' + unit + '.pdf'), dpi=300)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        plot_compare_coeffs(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) == 2:
+        plot_y(sys.argv[1])
+    else:
+        print(f'Usage: {sys.argv[0]} DIRECTORY1 [DIRECTORY2]')
+        exit(1)
