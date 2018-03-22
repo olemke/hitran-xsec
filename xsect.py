@@ -72,7 +72,7 @@ def main():
         os.makedirs(outdir, exist_ok=True)
 
         logger.info(f'Calculating RMS')
-        res = [p.apply_async(optimize_xsec, args[0:2]) for args in inputs]
+        res = [p.apply_async(xu.optimize_xsec, args[0:2]) for args in inputs]
         results = [r.get() for r in res if r]
         logger.info(f'Done {len(results)} calculations')
 
