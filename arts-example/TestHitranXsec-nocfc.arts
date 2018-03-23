@@ -21,8 +21,7 @@ INCLUDE "general/continua.arts"
 INCLUDE "general/agendas.arts"
 INCLUDE "general/planet_earth.arts"
 
-ReadXML(hitran_xsec_data,
-        "CFC.xml")
+ReadXML(hitran_xsec_data, "input/CFC.avg.xml")
 Print(hitran_xsec_data)
 
 
@@ -116,20 +115,20 @@ abs_speciesSet(species=[
 #        1.071741548764810e+14
 #)
 
-abs_linesReadFromSplitArtscat(abs_lines, abs_species,
- "artscat-aer32/artscat-aer32",
-        2.711622782610000e+11,
-        1.071741548764810e+14
-)
+#abs_linesReadFromSplitArtscat(abs_lines, abs_species,
+# "artscat-aer32/artscat-aer32",
+#        2.711622782610000e+11,
+#        1.071741548764810e+14
+#)
 
 # set the extrapolation level, if lm_p_lim is <0
 NumericSet( lm_p_lim,   -3 )
 Print(lm_p_lim,0)
 
-abs_lines_per_speciesCreateFromLines
+#abs_lines_per_speciesCreateFromLines
 #abs_lines_per_speciesWriteToSplitArtscat(basename="artscat-aer32/artscat-aer32")
 
-abs_lines_per_speciesCompact
+#abs_lines_per_speciesCompact
 
 
 # Atmospheric scenario
@@ -149,7 +148,7 @@ sensorOff
 
 
 StringSet( iy_unit, "1" )
-StringSet( iy_unit, "PlanckBT" )
+#StringSet( iy_unit, "PlanckBT" )
 
 
 # Extract radiative background and optical depth as auxiliary variables
@@ -176,7 +175,7 @@ Extract( t_surface, t_field, 0 )
 #MatrixSetConstant( sensor_pos, 3, 1, 600e3 )
 #MatrixSet( sensor_los, [ 95; 113; 135] )
 MatrixSetConstant( sensor_pos, 1, 1, 600e3 )
-MatrixSet( sensor_los, [180] )
+MatrixSet( sensor_los, [135] )
 
 # Perform RT calculations
 # ---
