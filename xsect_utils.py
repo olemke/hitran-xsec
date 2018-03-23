@@ -23,10 +23,6 @@ _lorentz_cutoff = None
 logger = logging.getLogger(__name__)
 
 
-def set_logger(new_logger):
-    logger = new_logger
-
-
 class LorentzError(RuntimeError):
     pass
 
@@ -110,6 +106,24 @@ def plot_fit(ax, fwhm, pressure_diff, outliers=True):
     ax.scatter(pressure_diff[~decision], fwhm[~decision] / 1e9,
                color='red')
     ax.xaxis.set_major_formatter(typhon.plots.HectoPascalFormatter())
+
+
+def xsec_select_band2(xsec_result, band, epsilon=10):
+    return [x for x in xsec_result
+            if band[0] - epsilon < frequency2wavenumber(x['fmin'] / 100)
+            < band[0] + epsilon
+            and band[1] - epsilon < frequency2wavenumber(x['fmax'] / 100)
+            < band[1] + epsilon]
+
+
+def xsec_select_pressure(xsec_result, pressure, epsilon=100):
+    return [x for x in xsec_result
+            if pressure - epsilon < x['pressure'] < pressure + epsilon]
+
+
+def xsec_select_temperature(xsec_result, temperature, epsilon=3):
+    return [x for x in xsec_result
+            if temperature - epsilon < x['temperature'] < temperature + epsilon]
 
 
 def xsec_select_band(xsec_result, band):
@@ -247,38 +261,114 @@ def torr_to_pascal(torr):
     return torr * 101325. / 760.
 
 
-def plot_compare_xsec_temp(inputs, fmin, fmax, title, outdir):
+def plot_compare_xsec_temp(inputs, title, outdir, diff=False):
     typhon.plots.styles.use('typhon')
     fig, ax = plt.subplots()
     last_temp = 0
     xsecs2plot = []
     last_pressure = None
-    # print('--------------')
     for xsec in inputs:
-        # print(xsec[0]['fmin'], fmin, xsec[0]['fmax'], fmax)
-        if xsec[0]['fmin'] <= fmin and xsec[0]['fmax'] >= fmax:
-            # print('found band')
-            if last_pressure is None:
-                last_pressure = xsec[0]['pressure']
-            if numpy.abs(xsec[0]['pressure'] - last_pressure) < 1000:
-                if not numpy.isclose(xsec[0]['temperature'], last_temp):
-                    last_temp = xsec[0]['temperature']
-                    xsecs2plot.append(xsec[0])
+        if last_pressure is None:
+            last_pressure = xsec['pressure']
+        if numpy.abs(xsec['pressure'] - last_pressure) < 1000:
+            if not numpy.isclose(xsec['temperature'], last_temp):
+                last_temp = xsec['temperature']
+                xsecs2plot.append(xsec)
 
-    xsecs2plot = [xsecs2plot[0], xsecs2plot[len(xsecs2plot) // 2],
-                  xsecs2plot[-1]]
-    ax.set_prop_cycle(
-        color=typhon.plots.mpl_colors('viridis_r', len(xsecs2plot)))
+    xsecs2plot = sorted(xsecs2plot, key=lambda x: x['temperature'])
+    nf = 5
+    if diff:
+        if len(xsecs2plot) > nf:
+            xsecs2plot = numpy.array(xsecs2plot)[
+                             numpy.linspace(0, len(xsecs2plot) - 1, num=nf,
+                                            endpoint=True, dtype=int)][::-1]
+            iref = -1
+            # ref = xsecs2plot[len(xsecs2plot) // 2]['data'].copy()
+            ref = xsecs2plot[iref]['data'].copy()
+            reftemp = xsecs2plot[iref]['temperature']
+            for x in xsecs2plot:
+                x['data'] = ref - x['data']
+    else:
+        if len(xsecs2plot) > nf:
+            xsecs2plot = numpy.array(xsecs2plot)[
+                numpy.linspace(0, len(xsecs2plot) - 1, num=nf, endpoint=True,
+                               dtype=int)]
+    ax.set_prop_cycle(color=typhon.plots.mpl_colors(
+        'viridis' if diff else 'viridis_r', len(xsecs2plot)))
     for xsec in xsecs2plot:
         plot_xsec(ax, xsec, linewidth=1)
 
     typhon.plots.set_xaxis_formatter(typhon.plots.ScalingFormatter(1e9), ax=ax)
     ax.set_title(title)
     ax.set_xlabel('Frequency [GHz]')
-    ax.set_ylabel('Cross section [m^2]')
+    if diff:
+        ax.set_ylabel(f'Cross section difference [m^2]')
+    else:
+        ax.set_ylabel('Cross section [m^2]')
     ax.legend()
 
-    plt.savefig(os.path.join(outdir, f'xsec_temp_compare_{title}.pdf'))
+    sdiff = '_diff' if diff else ''
+    figname = f'xsec_temp_compare_{title}{sdiff}.pdf'
+    plt.savefig(os.path.join(outdir, figname))
+    logger.info(f'Wrote {figname}')
+
+
+def plot_compare_xsec_temp_at_freq(inputs, ifreq, title, outdir, reftype='freq',
+                                   diff=False):
+    typhon.plots.styles.use('typhon')
+    fig, ax = plt.subplots()
+
+    inputs = sorted(inputs, key=lambda x: x['temperature'])
+    fgrid = numpy.linspace(inputs[0]['fmin'], inputs[0]['fmax'],
+                           inputs[0]['nfreq'])
+    if diff:
+        iref = 0
+        if reftype == 'freq':
+            ref = numpy.array([i['data'][ifreq[iref]] / 10000 for i in inputs])
+            reffreq = fgrid[ifreq[iref]]
+        elif reftype == 'temp':
+            ref = inputs[iref]['data'].copy()
+            reftemp = inputs[iref]['temperature']
+            for x in inputs:
+                x['data'] = ref - x['data']
+
+    # ax.set_prop_cycle(color=typhon.plots.mpl_colors('viridis', len(ifreq)))
+    for i_frequency in ifreq:
+        y = numpy.array([i['data'][i_frequency] / 10000 for i in inputs])
+        if diff and reftype == 'freq':
+            y = ref - y
+        x = [i['temperature'] for i in inputs]
+        p = [i['pressure'] for i in inputs]
+        ax.plot(x, y, marker='x', label=f'{fgrid[i_frequency]/1e12:g} THz - '
+                                        f'{frequency2wavenumber(fgrid[i_frequency])/100:.0f} 1/cm')
+
+    # ax.set_prop_cycle(
+    #     color=typhon.plots.mpl_colors('viridis_r', len(xsecs2plot)))
+    # for xsec in xsecs2plot:
+    #     plot_xsec(ax, xsec, linewidth=1)
+    #
+    # typhon.plots.set_xaxis_formatter(typhon.plots.scalingformatter(1e9), ax=ax)
+    if diff and reftype == 'freq':
+        ax.set_title(
+            title + f', ref freq {frequency2wavenumber(reffreq)/100:.0f} cm^-1')
+    elif diff and reftype == 'temp':
+        ax.set_title(
+            title + f', ref temp {reftemp:.0f} K')
+    else:
+        ax.set_title(title)
+
+    ax.set_xlabel('Temperature [K]')
+    if diff:
+        ax.set_ylabel(f'Cross section difference [m^2]')
+    else:
+        ax.set_ylabel('Cross section [m^2]')
+    ax.legend(fontsize='xx-small')
+    #
+    sdiff = f'_diff_{reftype}' if diff else ''
+    figname = f'xsec_temp_freq_compare_{title}{sdiff}.pdf'
+    plt.savefig(
+        os.path.join(outdir, figname))
+    logger.info(f'Wrote {figname}')
 
 
 def plot_available_xsecs(inputs, title, outdir):

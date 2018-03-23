@@ -1,3 +1,4 @@
+import copy
 import itertools
 import logging
 import multiprocessing as mp
@@ -10,14 +11,29 @@ import typhon
 import xsect_utils as xu
 
 logging.basicConfig(level=logging.WARN)
-                    # format='%(asctime)s:%(levelname)s: %(message)s',
-                    # datefmt='%b %d %H:%M:%S')
+# format='%(asctime)s:%(levelname)s: %(message)s',
+# datefmt='%b %d %H:%M:%S')
 
 xulogger = logging.getLogger(xu.__name__)
 xulogger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+CFCS = {
+    'CFC11': {
+        'bands': ((810, 880), (1050, 1120)),
+    },
+    'CFC12': {
+        'bands': ((800, 1270), (850, 950), (1050, 1200)),
+    },
+    'HCFC22': {
+        'bands': ((730, 1380), (760, 860), (1070, 1195)),
+    },
+    'HFC134a': {
+        'bands': ((750, 1600), (1035, 1130), (1135, 1140)),
+    },
+}
 
 
 def main():
@@ -135,26 +151,36 @@ def main():
     elif command == 'avail':
         os.makedirs(outdir, exist_ok=True)
         xu.plot_available_xsecs(inputs, species, outdir)
-    elif command == 'availtemp':
-        logger.info('temperature')
+    elif command == 'comparetemp':
         os.makedirs(outdir, exist_ok=True)
-        if sys.argv[2] == 'HFC134a':
-            xsec_refs = ((755, 1600),)
-        elif sys.argv[2] == 'HCFC22':
-            xsec_refs = ((730, 1380),)
-        elif sys.argv[2] == 'CFC11':
-            xsec_refs = ((810, 880),
-                         (1055, 1120),)
-        elif sys.argv[2] == 'CFC12':
-            xsec_refs = ((800, 1270),)
-        for xsec_ref in xsec_refs:
-            xu.plot_compare_xsec_temp(inputs,
-                                      xu.wavenumber2frequency(
-                                          xsec_ref[0] * 100),
-                                      xu.wavenumber2frequency(
-                                          xsec_ref[1] * 100),
-                                      species + f' {xsec_ref[0]}-{xsec_ref[1]}',
-                                      outdir)
+        bands = CFCS[sys.argv[2]]['bands']
+
+        for band in bands:
+            xsec_sel = sorted(xu.xsec_select_band2(xsecs, band),
+                              key=lambda x: x['pressure'])
+            xu.plot_compare_xsec_temp(
+                copy.deepcopy(xsec_sel),
+                species + f' {band[0]}-{band[1]}', outdir, diff=True)
+            xu.plot_compare_xsec_temp(
+                copy.deepcopy(xsec_sel),
+                species + f' {band[0]}-{band[1]}', outdir, diff=False)
+    elif command == 'comparetempfreq':
+        os.makedirs(outdir, exist_ok=True)
+        bands = CFCS[sys.argv[2]]['bands']
+        for band in bands:
+            xsec_sel = sorted(xu.xsec_select_band2(xsecs, band),
+                              key=lambda x: x['pressure'])
+            xsec_sel = xu.xsec_select_pressure(xsec_sel,
+                                               xsec_sel[0]['pressure'])
+            nf = xsec_sel[0]['nfreq']
+            for diff, reftype in ((True, 'temp'), (True, 'freq'), (False, '')):
+                xu.plot_compare_xsec_temp_at_freq(
+                    copy.deepcopy(xsec_sel),
+                    numpy.linspace(nf // 10, nf - nf // 10, num=10,
+                                   endpoint=True,
+                                   dtype=int),
+                    species + f' {band[0]}-{band[1]}',
+                    outdir, diff=diff, reftype=reftype)
     elif command == 'testarts':
         xsecdata = typhon.arts.xml.load(
             os.path.join(outdir, sys.argv[2] + '.xml'))
