@@ -22,6 +22,7 @@ _LORENTZ_CUTOFF = None
 
 
 class XsecError(RuntimeError):
+    """Cross section related RuntimeError."""
     pass
 
 
@@ -29,7 +30,9 @@ class XsecFile:
     """HITRAN cross section file."""
 
     def __init__(self, filename):
+        """Lazy-load cross section file."""
         self.filename = filename
+        # noinspection PyUnusedLocal
         rnum = r'[0-9]+\.?[0-9]*'
         m = re.search(
             f'(?P<species>[^_]*)_(?P<T>{rnum})K?[-_](?P<P>{rnum})(Torr)?[-_]'
@@ -149,7 +152,7 @@ class XsecFileIndex:
         return obj
 
     def __repr__(self):
-        return [f for f in self.files]
+        return '\n'.join([f.filename for f in self.files])
 
     def find(self, wmin=None, wmax=None, temperature=None, pressure=None):
         """Find cross sections that match the criteria."""
@@ -238,6 +241,7 @@ def xsec_convolve_simple(xsec1, hwhm, cutoff=None):
 
 
 def calc_xsec_rms(xsec1, xsec2):
+    """Calculate RMS between two cross sections."""
     return np.sqrt(np.mean(np.square(
         xsec1.data / np.sum(xsec1.data) - xsec2.data / np.sum(xsec2.data))))
 
@@ -310,6 +314,7 @@ def optimize_xsec(xsec_low, xsec_high):
 
 
 def build_pairs_with_lowest_pressure(iterable):
+    """Pairs lowest pressure xsec with each higher pressure"""
     for b in iterable:
         for t in b:
             xsec_list = sorted(t, key=lambda x: x.pressure)
