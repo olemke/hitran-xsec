@@ -296,6 +296,8 @@ def optimize_xsec(xsec_low, xsec_high,
     return {
         'source_pressure': float(xsec_low.pressure),
         'target_pressure': float(xsec_high.pressure),
+        'source_filename': xsec_low.filename,
+        'target_filename': xsec_high.filename,
         'source_temp': float(xsec_low.temperature),
         'target_temp': float(xsec_high.temperature),
         'wmin': float(xsec_low.wmin),
