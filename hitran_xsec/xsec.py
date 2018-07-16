@@ -246,11 +246,9 @@ def calc_xsec_rms(xsec1, xsec2):
         xsec1.data / np.sum(xsec1.data) - xsec2.data / np.sum(xsec2.data))))
 
 
-def optimize_xsec(xsec_low, xsec_high):
+def optimize_xsec(xsec_low, xsec_high,
+                  fwhm_min=0.01e9, fwhm_max=20.01e9, fwhm_nsteps=1000):
     """Find the broadening width with lowest RMS."""
-    fwhm_min = 0.01e9
-    fwhm_max = 20.01e9
-    fwhm_nsteps = 1000
 
     xsec_name = (
         f"{xsec_low.species}_"
