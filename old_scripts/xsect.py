@@ -9,6 +9,7 @@ import sys
 
 import numpy
 import typhon
+import typhon.arts.xsec
 
 import xsect_utils as xu
 
@@ -43,7 +44,7 @@ XSECINFO = {
 
 
 def main():
-    #p = mp.Pool(processes=16)
+    # p = mp.Pool(processes=16)
     p = mp.Pool()
 
     logger.info('Reading cross section files')
@@ -118,6 +119,8 @@ def main():
                          (1050, 1120, 231, 1000),)
         elif sys.argv[2] == 'CFC12':
             xsec_refs = ((800, 1270, 233, 1000),)
+        else:
+            raise RuntimeError(f'Invalid species {sys.argv[2]}')
 
         for xsec_ref in xsec_refs:
             for xsec in inputs:
