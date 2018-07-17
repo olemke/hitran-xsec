@@ -50,6 +50,10 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
 
 
 def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
+
+    if not rmsoutput:
+        raise RuntimeError('RMS output is empty')
+
     # Find reference profiles for each band
     bands = xsecfileindex.cluster_by_band_and_temperature()
     # Convert generators to lists and sort by pressure
