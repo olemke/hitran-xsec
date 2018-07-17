@@ -18,6 +18,7 @@ logger = logging.getLogger('xsec')
 
 
 def plot_available_xsecs(xsecfileindex, title=None, ax=None):
+    """Plots the available temperatures and pressures of cross section data."""
     if ax is None:
         ax = plt.gca()
 
@@ -33,6 +34,7 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
 
 def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
                                     outdir=''):
+    """Plots the RMS for different FWHMs of the Lorentz filter."""
     xsecs = {
         'low': xsec_low,
         'high': xsec_high,
@@ -152,6 +154,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
 
 
 def plot_xsec(xsec, ax=None, **kwargs):
+    """Plot cross section data."""
     if ax is None:
         ax = plt.gca()
 
@@ -170,6 +173,7 @@ def plot_xsec(xsec, ax=None, **kwargs):
 
 
 def plot_fit(ax, fwhm, pressure_diff, outliers=False):
+    """Plot the fitting function."""
     fit_func = func_2straights
     popt, pcov, decision = do_fit(fwhm, pressure_diff, fit_func=fit_func,
                                   outliers=outliers)
@@ -186,6 +190,7 @@ def plot_fit(ax, fwhm, pressure_diff, outliers=False):
 
 
 def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
+    """Scatter plot of Lorentz filter FWHM vs pressure difference."""
     if kwargs is None:
         kwargs = {}
 
@@ -200,7 +205,9 @@ def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
         ax.set_title(title)
 
 
-def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False, ax=None):
+def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
+                    ax=None):
+    """Scatter plot of the FWHM with the lowest RMS."""
     if species is None:
         species = xsecfileindex.files[0].species
 
@@ -213,11 +220,11 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False, ax=N
                  if band[0] == x['wmin'] and band[1] == x['wmax']]
         scatter_plot(*calc_fwhm_and_pressure_difference(xsecs),
                      species, ax, label=f'{band[0]}-{band[1]}')
-    plot_fit(ax, *calc_fwhm_and_pressure_difference(rmsoutput), outliers=outliers)
+    plot_fit(ax, *calc_fwhm_and_pressure_difference(rmsoutput),
+             outliers=outliers)
 
     ax.legend(fontsize='xx-small')
 
-#    ax.set_ylim((0, 6))
     ax.set_xlim((0, 110000))
     ax.xaxis.set_major_formatter(HectoPascalFormatter())
 
