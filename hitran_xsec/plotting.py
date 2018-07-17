@@ -85,7 +85,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
         xsecs['low'],
         xsec_simple_fwhm / 2.,
         run_lorentz_f,
-        _LORENTZ_CUTOFF)
+        LORENTZ_CUTOFF)
     xsec_simple['pressure'] = xsecs['high']['pressure']
     if len(xsec_simple['data']) != len(xsecs['high']['data']):
         fgrid_low = np.linspace(xsecs['low']['fmin'],
@@ -129,7 +129,7 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     # Plot convoluted xsec
     xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'],
                                                  fwhms[rms_min_i] / 2,
-                                                 run_lorentz_f, _LORENTZ_CUTOFF)
+                                                 run_lorentz_f, LORENTZ_CUTOFF)
 
     plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
               label=f'Lorentz FWHM {fwhms[rms_min_i]/1e9:1.2g} GHz')
