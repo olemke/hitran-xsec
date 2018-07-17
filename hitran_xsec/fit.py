@@ -50,7 +50,6 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
 
 
 def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
-
     if not rmsoutput:
         raise XsecError('RMS output is empty')
 
@@ -64,7 +63,8 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     temps = [[t[0].temperature for t in b] for b in lbands]
 
     # Select profiles closest to reference temperature
-    mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in temps]
+    mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
+            temps]
     xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
 
     if not len(xsec_ref):
