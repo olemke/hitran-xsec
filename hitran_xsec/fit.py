@@ -66,7 +66,7 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     if not len(xsec_ref):
         raise RuntimeError('No matching xsecs found.')
 
-    logger.info(f'{len(xsec_ref)} profiles selected: '
+    logger.info(f'genarts {len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
     fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
     popt, pcov, decision = do_fit(fwhm, pressure_diff)
