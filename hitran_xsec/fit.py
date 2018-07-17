@@ -1,9 +1,14 @@
+import logging
+import os
+
 import numpy as np
 from scipy.optimize import curve_fit
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
 
 __all__ = ['gen_arts']
+
+logger = logging.getLogger('fit')
 
 
 def func_2straights(x, x0, a, b):
@@ -61,7 +66,8 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     if not len(xsec_ref):
         raise RuntimeError('No matching xsecs found.')
 
-    print(f'{len(xsec_ref)} profiles selected.')
+    logger.info(f'{len(xsec_ref)} profiles selected: '
+                f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
     fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
     popt, pcov, decision = do_fit(fwhm, pressure_diff)
     return XsecRecord(xsec_ref[0].species,
