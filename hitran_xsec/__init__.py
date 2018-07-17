@@ -23,4 +23,4 @@ if __name__ == "__main__":
         result = pool.starmap(optimize_xsec,
                               build_pairs_with_lowest_pressure(bands))
 
-    save_output("output.json", result)
+    save_rms_data("output.json", result)

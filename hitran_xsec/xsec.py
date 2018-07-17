@@ -13,7 +13,7 @@ from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
 
 __all__ = ['XsecError', 'XsecFile', 'XsecFileIndex', 'optimize_xsec',
-           'build_pairs_with_lowest_pressure', 'save_output', 'load_output',
+           'build_pairs_with_lowest_pressure', 'save_rms_data', 'load_rms_data',
            'optimize_xsec_multi']
 
 logger = logging.getLogger('xsec')
@@ -336,12 +336,14 @@ def optimize_xsec_multi(xsecfileindex, processes=None):
         return pool.starmap(optimize_xsec, pressure_pairs)
 
 
-def save_output(filename, results):
+def save_rms_data(filename, results):
+    """Save calculated RMS data for cross sections to JSON file."""
     with open(filename, 'w') as f:
         json.dump(results, f)
 
 
-def load_output(filename):
+def load_rms_data(filename):
+    """Load calculated RMS data for cross sections from JSON file."""
     with open(filename) as f:
         results = json.load(f)
     return results
