@@ -5,9 +5,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
-from .xsec import XsecError
 
-__all__ = ['gen_arts']
+from .xsec import XsecError
 
 logger = logging.getLogger('fit')
 

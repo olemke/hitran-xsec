@@ -12,13 +12,9 @@ from scipy.integrate import simps
 from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
 
-__all__ = ['XsecError', 'XsecFile', 'XsecFileIndex', 'optimize_xsec',
-           'build_pairs_with_lowest_pressure', 'save_rms_data', 'load_rms_data',
-           'optimize_xsec_multi']
-
 logger = logging.getLogger('xsec')
 
-_LORENTZ_CUTOFF = None
+LORENTZ_CUTOFF = None
 
 
 class XsecError(RuntimeError):
@@ -276,7 +272,7 @@ def optimize_xsec(xsec_low, xsec_high,
         # logger.info(f"Calculating {fwhm/1e9:.3f} for {xsec_name}")
         xsec_conv, conv, width = xsec_convolve_f(xsec_low, fwhm / 2,
                                                  run_lorentz_f,
-                                                 _LORENTZ_CUTOFF)
+                                                 LORENTZ_CUTOFF)
         # logger.info(f"Calculating done {fwhm/1e9:.3f} for {xsec_name}")
         if width < 10:
             logger.warning(

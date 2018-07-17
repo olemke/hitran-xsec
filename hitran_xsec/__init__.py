@@ -1,19 +1,14 @@
 """Package for processing HITRAN cross section data files.
 """
 
-import multiprocessing as mp
-
-from .plotting import *
+from . import fit
+from . import plotting
 from .xsec import *
-from .fit import *
-
-__all__ = [s for s in dir() if not s.startswith('_')]
-
-logger = logging.getLogger('xsec')
-
-_LORENTZ_CUTOFF = None
 
 if __name__ == "__main__":
+    import multiprocessing as mp
+    import logging
+
     logging.basicConfig(level=logging.WARN)
     xfi = XsecFileIndex(directory='cfc12', ignore='.*[^0-9._].*')
 

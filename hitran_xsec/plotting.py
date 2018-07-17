@@ -9,10 +9,8 @@ from typhon.physics import frequency2wavenumber
 from typhon.plots import HectoPascalFormatter
 
 from .fit import calc_fwhm_and_pressure_difference, func_2straights, do_fit
-from .xsec import (_LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f,
+from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f,
                    calc_xsec_rms)
-
-__all__ = [s for s in dir() if not s.startswith('_')]
 
 logger = logging.getLogger('xsec')
 
