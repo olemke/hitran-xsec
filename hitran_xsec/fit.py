@@ -5,6 +5,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
+from .xsec import XsecError
 
 __all__ = ['gen_arts']
 
@@ -52,7 +53,7 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
 def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
 
     if not rmsoutput:
-        raise RuntimeError('RMS output is empty')
+        raise XsecError('RMS output is empty')
 
     # Find reference profiles for each band
     bands = xsecfileindex.cluster_by_band_and_temperature()
@@ -68,7 +69,7 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
 
     if not len(xsec_ref):
-        raise RuntimeError('No matching xsecs found.')
+        raise XsecError('No matching xsecs found.')
 
     logger.info(f'genarts {len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
