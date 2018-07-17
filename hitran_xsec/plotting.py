@@ -208,6 +208,9 @@ def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
 def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
                     ax=None):
     """Scatter plot of the FWHM with the lowest RMS."""
+    if not rmsoutput:
+        raise RuntimeError('RMS output is empty')
+
     if species is None:
         species = xsecfileindex.files[0].species
 
