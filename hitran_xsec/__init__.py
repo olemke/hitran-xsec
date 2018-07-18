@@ -3,6 +3,7 @@
 
 from . import fit
 from . import plotting
+from . import xsec
 from .xsec import *
 
 if __name__ == "__main__":
