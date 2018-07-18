@@ -12,7 +12,10 @@ from scipy.integrate import simps
 from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
 
-logger = logging.getLogger('xsec')
+__all__ = ['XsecFileIndex', 'load_rms_data', 'optimize_xsec',
+           'optimize_xsec_multi', 'save_rms_data']
+
+logger = logging.getLogger(__name__)
 
 LORENTZ_CUTOFF = None
 
