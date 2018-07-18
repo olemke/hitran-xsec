@@ -16,10 +16,10 @@
 
 Arts2 {
 
-INCLUDE "general/general.arts"
-INCLUDE "general/continua.arts"
-INCLUDE "general/agendas.arts"
-INCLUDE "general/planet_earth.arts"
+INCLUDE "general.arts"
+INCLUDE "continua.arts"
+INCLUDE "agendas.arts"
+INCLUDE "planet_earth.arts"
 
 ReadXML(hitran_xsec_data, "input/CFC.avg.xml")
 Print(hitran_xsec_data)
@@ -97,21 +97,26 @@ VectorNLogSpace( p_grid, 100, 1000e2, 1 )
 #             "O3"] )
 abs_speciesSet(species=[
 "CFC11-HXSEC",
-"CFC12-HXSEC",
-"HFC134a-HXSEC",
-"HCFC22-HXSEC",
+#"CFC12-HXSEC",
+#"HFC134a-HXSEC",
+#"HCFC22-HXSEC",
         "H2O, H2O-SelfContCKDMT252, H2O-ForeignContCKDMT252",
-        "O2, O2-CIAfunCKDMT100",
-        "O3",
-        "N2, N2-CIAfunCKDMT252, N2-CIArotCKDMT252",
-        "CO",
-        "CO2, CO2-CKDMT252",
-        "CH4",
-        "N2O",
+        "O2, O2-CIAfunCKDMT100"
+#        "O3",
+#        "N2, N2-CIAfunCKDMT252, N2-CIArotCKDMT252",
+#        "CO",
+#        "CO2, CO2-CKDMT252",
+#        "CH4",
+#        "N2O",
 #        "CH3Br",
-        "CH3Cl",
-        "SF6"
+#        "CH3Cl",
+#        "SF6"
 ])
+
+abs_lineshape_per_tgDefine( abs_lineshape, abs_species,
+    ["Voigt_Kuntz6", "Voigt_Kuntz6", "Voigt_Kuntz6"],
+    ["VVH", "VVH", "VVH"],
+    [ 750e9, 750e9, 750e9 ] )
 
 #abs_linesReadFromLBLRTM(abs_lines,
 #        "/scratch/uni/u237/user_data/mbrath/LBLRTM_catalogue/aer_v_3.2",

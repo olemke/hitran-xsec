@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
@@ -18,9 +19,16 @@ from scipy.signal import fftconvolve
 from sklearn.ensemble import IsolationForest
 from typhon.physics import frequency2wavenumber, wavenumber2frequency
 
-_lorentz_cutoff = None
+_LORENTZ_CUTOFF = None
 
 logger = logging.getLogger(__name__)
+
+SPECIES_MAP = {
+    'CFC11': 'CCl3F',
+    'CFC12': 'CCl2F2',
+    'HCFC22': 'CHClF2',
+    'HFC134a': 'CFH2CF3',
+}
 
 
 class LorentzError(RuntimeError):
@@ -66,6 +74,18 @@ def scatter_plot(ax, fwhm, pressure_diff, title, **kwargs):
     ax.set_xlabel('∆P [hPa]')
 
     ax.set_title(title)
+
+
+def calc_simple_fwhm_and_pressure_difference(xsec_result):
+    dfs = [(r['fmax'] - r['fmin']) / r['nfreq'] for r in xsec_result]
+    fwhm = numpy.array([df * r['target_pressure'] / r['source_pressure']
+                        * numpy.sqrt(r['source_temp']
+                                     / r['target_temp']) for r, df in
+                        zip(xsec_result, dfs)])
+    pressure_diff = numpy.array(
+        [r['target_pressure'] - r['source_pressure'] for r in xsec_result])
+
+    return fwhm, pressure_diff
 
 
 def calc_fwhm_and_pressure_difference(xsec_result):
@@ -154,10 +174,14 @@ def scatter_and_fit(xsec_result, species, datadir):
                      *calc_fwhm_and_pressure_difference(
                          xsec_select_band(xsec_result, band=band)),
                      species, label=f'{band[0]}-{band[1]}')
+        scatter_plot(ax,
+                     *calc_simple_fwhm_and_pressure_difference(
+                         xsec_select_band(xsec_result, band=band)),
+                     species, label=f'Freddy\'s approach {band[0]}-{band[1]}')
     plot_fit(ax, *calc_fwhm_and_pressure_difference(xsec_result),
              outliers=outliers)
 
-    ax.legend()
+    ax.legend(fontsize='xx-small')
 
     ax.set_ylim((0, 6))
     ax.set_xlim((0, 110000))
@@ -186,7 +210,7 @@ def scatter_and_fit(xsec_result, species, datadir):
                      [x for x in xsec_result if x['source_temp'] > 270]),
                  species, label='270K < T')
 
-    ax.legend()
+    ax.legend(fontsize='xx-small')
 
     ax.set_ylim((0, 6))
     ax.set_xlim((0, 110000))
@@ -242,7 +266,8 @@ def read_hitran_xsec(filename):
         header = f.readline()
         data = numpy.hstack(
             list(map(convert_line_to_float, f.readlines())))
-
+    xsec = hitran_raw_xsec_to_dict(header, data)
+    xsec['filename'] = filename
     return hitran_raw_xsec_to_dict(header, data)
 
 
@@ -276,22 +301,26 @@ def plot_compare_xsec_temp(inputs, title, outdir, diff=False):
                 xsecs2plot.append(xsec)
 
     xsecs2plot = sorted(xsecs2plot, key=lambda x: x['temperature'])
-    nf = 5
+    nt = 5
+    if nt > len(xsecs2plot):
+        nt = len(xsecs2plot)
     if diff:
-        if len(xsecs2plot) > nf:
+        if len(xsecs2plot) > nt:
             xsecs2plot = numpy.array(xsecs2plot)[
-                             numpy.linspace(0, len(xsecs2plot) - 1, num=nf,
+                             numpy.linspace(0, len(xsecs2plot) - 1, num=nt,
                                             endpoint=True, dtype=int)][::-1]
-            iref = -1
-            # ref = xsecs2plot[len(xsecs2plot) // 2]['data'].copy()
-            ref = xsecs2plot[iref]['data'].copy()
-            reftemp = xsecs2plot[iref]['temperature']
-            for x in xsecs2plot:
-                x['data'] = ref - x['data']
+        iref = -1
+        # ref = xsecs2plot[len(xsecs2plot) // 2]['data'].copy()
+        ref = xsecs2plot[iref]['data'].copy()
+        reftemp = xsecs2plot[iref]['temperature']
+        for x in xsecs2plot:
+            if len(x['data']) != len(ref):
+                logger.error('fail!!!')
+            x['data'] = ref - x['data']
     else:
-        if len(xsecs2plot) > nf:
+        if len(xsecs2plot) > nt:
             xsecs2plot = numpy.array(xsecs2plot)[
-                numpy.linspace(0, len(xsecs2plot) - 1, num=nf, endpoint=True,
+                numpy.linspace(0, len(xsecs2plot) - 1, num=nt, endpoint=True,
                                dtype=int)]
     ax.set_prop_cycle(color=typhon.plots.mpl_colors(
         'viridis' if diff else 'viridis_r', len(xsecs2plot)))
@@ -428,7 +457,18 @@ def xsec_convolve_f(xsec1, hwhm, convfunc, cutoff=None):
 
     conv_f = convfunc(int(xsec1['nfreq']), fstep, hwhm, cutoff=cutoff)
     width = len(conv_f)
-    xsec_conv = xsec1.copy()
+    xsec_conv = deepcopy(xsec1)
+    xsec_conv['data'] = fftconvolve(xsec1['data'], conv_f, 'same')
+
+    return xsec_conv, conv_f, width
+
+
+def xsec_convolve_simple(xsec1, hwhm, cutoff=None):
+    fstep = (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq']
+    conv_f = run_lorentz_f(int(xsec1['nfreq']), fstep, hwhm,
+                           cutoff=cutoff)
+    width = len(conv_f)
+    xsec_conv = deepcopy(xsec1)
     xsec_conv['data'] = fftconvolve(xsec1['data'], conv_f, 'same')
 
     return xsec_conv, conv_f, width
@@ -499,11 +539,44 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
                   f"-{frequency2wavenumber(xsecs['high']['fmax']/100):1.0f}",
             linewidth=0.5)
 
+    # Simple approach
+    df = (xsecs['low']['fmax'] - xsecs['low']['fmin']) / xsecs['low']['nfreq']
+    xsec_simple_fwhm = (
+            df * xsecs['high']['pressure'] / xsecs['low']['pressure']
+            * numpy.sqrt(xsecs['low']['temperature']
+                         / xsecs['high']['temperature']))
+    xsec_simple, conv, width = xsec_convolve_simple(
+        xsecs['low'],
+        xsec_simple_fwhm / 2.,
+        _LORENTZ_CUTOFF)
+    xsec_simple['pressure'] = xsecs['high']['pressure']
+    if len(xsec_simple['data']) != len(xsecs['high']['data']):
+        fgrid_low = numpy.linspace(xsecs['low']['fmin'],
+                                   xsecs['low']['fmax'],
+                                   xsecs['low']['nfreq'])
+
+        fgrid_high = numpy.linspace(xsecs['high']['fmin'],
+                                    xsecs['high']['fmax'],
+                                    xsecs['high']['nfreq'])
+
+        xsec_high = deepcopy(xsecs['low'])
+        xsec_high['data'] = numpy.interp(fgrid_low, fgrid_high,
+                                         xsecs['high']['data'])
+    else:
+        xsec_high = xsecs['high']
+
+    rms_simple = calc_xsec_rms(xsec_simple, xsec_high)
+
+    ax.plot((fwhms[0] / 1e9, fwhms[-1] / 1e9),
+            (rms_simple, rms_simple),
+            linewidth=1,
+            label=f'RMS simple approach {rms_simple:.2e}@{xsec_simple_fwhm/1e9:.1f} GHz')
+
     ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
     ax.legend(loc=1)
     ax.set_ylabel('RMS')
     ax.set_xlabel('FWHM of Lorentz filter [GHz]')
-    ax.set_title(title)
+    ax.set_title(title + f' fspacing: {df/1e9:g} GHz')
 
     fig.savefig(fname)
     plt.close(fig)
@@ -515,19 +588,23 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
     # Plot xsec at low pressure
     plot_xsec(ax, xsecs['low'], linewidth=linewidth)
 
-    # Plot xsec at high pressure
-    plot_xsec(ax, xsecs['high'], linewidth=linewidth)
-
     # Plot convoluted xsec
     xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'],
                                                  fwhms[rms_min_i] / 2,
-                                                 run_lorentz_f, _lorentz_cutoff)
+                                                 run_lorentz_f, _LORENTZ_CUTOFF)
 
     plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
               label=f'Lorentz FWHM {fwhms[rms_min_i]/1e9:1.2g} GHz')
 
+    # Plot xsec at high pressure
+    plot_xsec(ax, xsecs['high'], linewidth=linewidth)
+
+    # Plot simple approach
+    plot_xsec(ax, xsec_simple, linewidth=linewidth,
+              label=f'Simple approach {xsec_simple_fwhm/1e9:1.2g} GHz')
+
     ax.legend(loc=1)
-    ax.set_title(title)
+    ax.set_title(title + f' fspacing: {df/1e9:g} GHz')
 
     fname = f"{xsec_name}_xsec_conv.pdf"
     fname = os.path.join(outdir, fname)
@@ -556,7 +633,7 @@ def optimize_xsec(xsec_low, xsec_high):
     logger.info(f"Calc {xsec_name}")
 
     rms = numpy.zeros((fwhm_nsteps,))
-    fwhms = numpy.linspace(fwhm_min, fwhm_max, fwhm_nsteps, endpoint=True)
+    fwhms = numpy.linspace(fwhm_min, fwhm_max, fwhm_nsteps)
 
     fgrid_conv = numpy.linspace(xsecs['low']['fmin'],
                                 xsecs['low']['fmax'],
@@ -577,14 +654,14 @@ def optimize_xsec(xsec_low, xsec_high):
         # logger.info(f"Calculating {fwhm/1e9:.3f} for {xsec_name}")
         xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'], fwhm / 2,
                                                      run_lorentz_f,
-                                                     _lorentz_cutoff)
+                                                     _LORENTZ_CUTOFF)
         # logger.info(f"Calculating done {fwhm/1e9:.3f} for {xsec_name}")
         if width < 10:
             logger.warning(
                 f"Very few ({width}) points used in Lorentz function for "
                 f"{xsec_name} at FWHM {fwhm/1e9:.2} GHz.")
 
-        xsecs['high_interp'] = xsecs['conv'].copy()
+        xsecs['high_interp'] = deepcopy(xsecs['conv'])
         xsecs['high_interp']['data'] = numpy.interp(fgrid_conv, fgrid_high,
                                                     xsecs['high']['data'])
 

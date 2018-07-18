@@ -6,7 +6,6 @@ __pycache__
 arts-example/*.rep
 arts-example/*.xml
 arts-example/*.xml.bin
-cfc11
-cfc12
-convtest.py
-output_*
+data
+output
+output_old

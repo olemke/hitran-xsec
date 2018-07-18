@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import copy
 import itertools
 import logging
@@ -7,6 +9,7 @@ import sys
 
 import numpy
 import typhon
+import typhon.arts.xsec
 
 import xsect_utils as xu
 
@@ -20,25 +23,29 @@ xulogger.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-CFCS = {
+XSECINFO = {
     'CFC11': {
+        'molname': 'CCl3F',
         'bands': ((810, 880), (1050, 1120)),
     },
     'CFC12': {
+        'molname': 'CCl2F2',
         'bands': ((800, 1270), (850, 950), (1050, 1200)),
     },
     'HCFC22': {
+        'molname': 'CHClF2',
         'bands': ((730, 1380), (760, 860), (1070, 1195)),
     },
     'HFC134a': {
+        'molname': 'CFH2CF3',
         'bands': ((750, 1600), (1035, 1130), (1135, 1140)),
     },
 }
 
 
 def main():
-    p = mp.Pool(processes=16)
-    # p = mp.Pool()
+    # p = mp.Pool(processes=16)
+    p = mp.Pool()
 
     logger.info('Reading cross section files')
     if len(sys.argv) > 3 and sys.argv[2] == 'CFC11':
@@ -112,6 +119,8 @@ def main():
                          (1050, 1120, 231, 1000),)
         elif sys.argv[2] == 'CFC12':
             xsec_refs = ((800, 1270, 233, 1000),)
+        else:
+            raise RuntimeError(f'Invalid species {sys.argv[2]}')
 
         for xsec_ref in xsec_refs:
             for xsec in inputs:
@@ -153,7 +162,7 @@ def main():
         xu.plot_available_xsecs(inputs, species, outdir)
     elif command == 'comparetemp':
         os.makedirs(outdir, exist_ok=True)
-        bands = CFCS[sys.argv[2]]['bands']
+        bands = XSECINFO[sys.argv[2]]['bands']
 
         for band in bands:
             xsec_sel = sorted(xu.xsec_select_band2(xsecs, band),
@@ -166,7 +175,7 @@ def main():
                 species + f' {band[0]}-{band[1]}', outdir, diff=False)
     elif command == 'comparetempfreq':
         os.makedirs(outdir, exist_ok=True)
-        bands = CFCS[sys.argv[2]]['bands']
+        bands = XSECINFO[sys.argv[2]]['bands']
         for band in bands:
             xsec_sel = sorted(xu.xsec_select_band2(xsecs, band),
                               key=lambda x: x['pressure'])
