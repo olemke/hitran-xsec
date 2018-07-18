@@ -17,6 +17,8 @@ def parse_args():
     args.add_argument('species', help='Name of species to process.')
     args.add_argument('-d', '--directory', default='.',
                       help='Directory with cross section data files.')
+    args.add_argument('-i', '--ignore-rms', action='store_true',
+                      help='Ignore existing RMS file.')
     args.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
                       default='output',
                       help='Output directory.'
@@ -39,7 +41,7 @@ def main():
     plt.gcf().clear()
 
     rms_file = os.path.join(output_dir, 'optimized.json')
-    if os.path.exists(rms_file):
+    if os.path.exists(rms_file) and not args.ignore_rms:
         logger.info(f'Reading precalculated RMS values form {rms_file}.')
         rms_result = hx.xsec.load_rms_data(rms_file)
     else:
