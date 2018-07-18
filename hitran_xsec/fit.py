@@ -8,7 +8,7 @@ from typhon.arts.xsec import XsecRecord
 
 from .xsec import XsecError
 
-logger = logging.getLogger('fit')
+logger = logging.getLogger(__name__)
 
 
 def func_2straights(x, x0, a, b):

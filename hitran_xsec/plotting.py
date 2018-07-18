@@ -12,7 +12,7 @@ from .fit import calc_fwhm_and_pressure_difference, func_2straights, do_fit
 from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f,
                    calc_xsec_rms)
 
-logger = logging.getLogger('xsec')
+logger = logging.getLogger(__name__)
 
 
 def plot_available_xsecs(xsecfileindex, title=None, ax=None):
