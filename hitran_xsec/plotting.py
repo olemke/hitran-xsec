@@ -30,21 +30,24 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
     ax.set_ylabel('P [hPa]')
 
 
-def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
+def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
                                     outdir=''):
     """Plots the RMS for different FWHMs of the Lorentz filter."""
+    xsec_low = xsecfileindex.find_file(xsec_result['source_filename'])
+    xsec_high = xsecfileindex.find_file(xsec_result['target_filename'])
+
     xsecs = {
         'low': xsec_low,
         'high': xsec_high,
     }
 
     xsec_name = (
-        f"{xsecs['low']['longname']}_"
-        f"{frequency2wavenumber(xsecs['low']['fmin'])/100.:.0f}"
-        f"-{frequency2wavenumber(xsecs['low']['fmax'])/100.:.0f}"
-        f"_{xsecs['low']['temperature']:.1f}K_"
-        f"{xsecs['low']['pressure']:.0f}P_{xsecs['high']['temperature']:.1f}K_"
-        f"{xsecs['high']['pressure']:.0f}P")
+        f"{xsecs['low'].species}_"
+        f"{xsecs['low'].wmin:.0f}"
+        f"-{xsecs['low'].wmax:.0f}"
+        f"_{xsecs['low'].temperature:.1f}K_"
+        f"{xsecs['low'].pressure:.0f}P_{xsecs['high'].temperature:.1f}K_"
+        f"{xsecs['high'].pressure:.0f}P")
 
     fname = f"{xsec_name}_rms.pdf"
     fname = os.path.join(outdir, fname)
@@ -65,40 +68,38 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
                       f'@{fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     ax.plot(fwhms / 1e9, rms,
-            label=f"T1: {xsecs['low']['temperature']:.1f}K "
-                  f"P1: {xsecs['low']['pressure']:.0f}P "
-                  f"f: {frequency2wavenumber(xsecs['low']['fmin']/100):1.0f}"
-                  f"-{frequency2wavenumber(xsecs['low']['fmax']/100):1.0f}\n"
-                  f"T2: {xsecs['high']['temperature']:.1f}K "
-                  f"P2: {xsecs['high']['pressure']:.0f}P "
-                  f"f: {frequency2wavenumber(xsecs['high']['fmin']/100):1.0f}"
-                  f"-{frequency2wavenumber(xsecs['high']['fmax']/100):1.0f}",
+            label=f"T1: {xsecs['low'].temperature:.1f}K "
+                  f"P1: {xsecs['low'].pressure:.0f}P "
+                  f"f: {xsecs['low'].wmin:1.0f}"
+                  f"-{xsecs['low'].wmax:1.0f}\n"
+                  f"T2: {xsecs['high'].temperature:.1f}K "
+                  f"P2: {xsecs['high'].pressure:.0f}P "
+                  f"f: {xsecs['high'].wmin:1.0f}"
+                  f"-{xsecs['high'].wmax:1.0f}",
             linewidth=0.5)
 
     # Simple approach
-    df = (xsecs['low']['fmax'] - xsecs['low']['fmin']) / xsecs['low']['nfreq']
+    df = (xsecs['low'].fmax - xsecs['low'].fmin) / xsecs['low'].nfreq
     xsec_simple_fwhm = (
-            df * xsecs['high']['pressure'] / xsecs['low']['pressure']
-            * np.sqrt(xsecs['low']['temperature']
-                      / xsecs['high']['temperature']))
+            df * xsecs['high'].pressure / xsecs['low'].pressure
+            * np.sqrt(xsecs['low'].temperature
+                      / xsecs['high'].temperature))
     xsec_simple, conv, width = xsec_convolve_f(
         xsecs['low'],
         xsec_simple_fwhm / 2.,
         run_lorentz_f,
         LORENTZ_CUTOFF)
-    xsec_simple['pressure'] = xsecs['high']['pressure']
-    if len(xsec_simple['data']) != len(xsecs['high']['data']):
-        fgrid_low = np.linspace(xsecs['low']['fmin'],
-                                xsecs['low']['fmax'],
-                                xsecs['low']['nfreq'])
+    xsec_simple.pressure = xsecs['high'].pressure
+    if len(xsec_simple.data) != len(xsecs['high'].data):
+        fgrid_low = np.linspace(xsecs['low'].fmin, xsecs['low'].fmax,
+                                xsecs['low'].nfreq)
 
-        fgrid_high = np.linspace(xsecs['high']['fmin'],
-                                 xsecs['high']['fmax'],
-                                 xsecs['high']['nfreq'])
+        fgrid_high = np.linspace(xsecs['high'].fmin, xsecs['high'].fmax,
+                                 xsecs['high'].nfreq)
 
         xsec_high = deepcopy(xsecs['low'])
-        xsec_high['data'] = np.interp(fgrid_low, fgrid_high,
-                                      xsecs['high']['data'])
+        xsec_high.data = np.interp(fgrid_low, fgrid_high,
+                                   xsecs['high'].data)
     else:
         xsec_high = xsecs['high']
 
@@ -124,21 +125,21 @@ def generate_rms_and_spectrum_plots(xsec_low, xsec_high, title, xsec_result,
 
     linewidth = 0.5
     # Plot xsec at low pressure
-    plot_xsec(ax, xsecs['low'], linewidth=linewidth)
+    plot_xsec(xsecs['low'], ax=ax, linewidth=linewidth)
 
     # Plot convoluted xsec
     xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'],
                                                  fwhms[rms_min_i] / 2,
                                                  run_lorentz_f, LORENTZ_CUTOFF)
 
-    plot_xsec(ax, xsecs['conv'], linewidth=linewidth,
+    plot_xsec(xsecs['conv'], ax=ax, linewidth=linewidth,
               label=f'Lorentz FWHM {fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     # Plot xsec at high pressure
-    plot_xsec(ax, xsecs['high'], linewidth=linewidth)
+    plot_xsec(xsecs['high'], ax=ax, linewidth=linewidth)
 
     # Plot simple approach
-    plot_xsec(ax, xsec_simple, linewidth=linewidth,
+    plot_xsec(xsec_simple, ax=ax, linewidth=linewidth,
               label=f'Simple approach {xsec_simple_fwhm/1e9:1.2g} GHz')
 
     ax.legend(loc=1)
