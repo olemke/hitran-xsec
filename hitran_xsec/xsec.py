@@ -204,7 +204,9 @@ def _cluster2(iterable, maxgap, key=lambda x: x, key2=None):
     """Cluster sequence elements by distance."""
     prev = None
     group = []
-    for item in sorted(iterable, key=key):
+    for item in sorted(
+            iterable,
+            key=lambda x: (key(x), key2(x)) if key2 is not None else key(x)):
         if not prev or (key(item) - key(prev) <= maxgap and
                         (not key2 or key2(item) - key2(prev) <= maxgap)):
             group.append(item)
