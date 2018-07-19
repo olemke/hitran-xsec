@@ -61,7 +61,7 @@ class XsecFile:
             raise XsecError(f'Error parsing filename {filename}')
 
     def __repr__(self):
-        return self.filename
+        return 'XsecFile:' + self.filename
 
     def read_hitran_xsec(self):
         """Read HITRAN cross section data file."""
