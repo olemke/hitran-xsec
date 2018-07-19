@@ -20,10 +20,11 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
         ax = plt.gca()
 
     bands = list(xsecfileindex.cluster_by_band())
+    bands_n = len(bands)
     for i, band in enumerate(bands):
         ax.scatter([x.temperature for x in band],
                    [x.pressure for x in band],
-                   s=50 - i / (len(bands) - 1) * 40,
+                   s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
                    label=f'{band[0].wmin}-{band[0].wmax} ({len(bands[i])})')
     ax.yaxis.set_major_formatter(HectoPascalFormatter())
     ax.invert_yaxis()
@@ -221,6 +222,7 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
         ax = plt.gca()
 
     bands = [(b[0].wmin, b[0].wmax) for b in xsecfileindex.cluster_by_band()]
+    bands_n = len(bands)
     for i, band in enumerate(bands):
         rms = [x for x in rmsoutput
                if band[0] == x['wmin'] and band[1] == x['wmax']]
@@ -228,7 +230,8 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
             continue
         xsecs = rms
         scatter_plot(*calc_fwhm_and_pressure_difference(xsecs), species, ax,
-                     s=50 - i / (len(bands) - 1) * 40, label=f'{band[0]}-{band[1]}')
+                     s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
+                     label=f'{band[0]}-{band[1]}')
     plot_fit(ax, *calc_fwhm_and_pressure_difference(rmsoutput),
              outliers=outliers)
 
