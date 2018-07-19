@@ -54,22 +54,28 @@ def main():
             rms_result = hx.xsec.load_rms_data(rms_file)
         else:
             rms_result = hx.optimize_xsec_multi(xfi)
-            hx.save_rms_data(rms_file, rms_result)
+            if rms_result:
+                hx.save_rms_data(rms_file, rms_result)
+                logger.info(f'Wrote {rms_file}')
+            else:
+                logger.warning(f'No results for {species}')
 
         # Plot of best FWHM vs. pressure difference and the fit
-        plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
-        hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
-        plt.gcf().savefig(plotfile)
-        plt.gcf().clear()
-        logger.info(f'Wrote {plotfile}')
+        if rms_result:
+            xml_file = os.path.join(output_dir, 'cfc.xml')
+            axml.save(hx.fit.gen_arts(xfi, rms_result), xml_file)
+            logger.info(f'Wrote {xml_file}')
 
-        if args.rms_plots:
-            for r in rms_result:
-                hx.plotting.generate_rms_and_spectrum_plots(
-                    xfi, title=species, xsec_result=r, outdir=output_dir)
+            plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
+            hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
+            plt.gcf().savefig(plotfile)
+            plt.gcf().clear()
+            logger.info(f'Wrote {plotfile}')
 
-        axml.save(hx.fit.gen_arts(xfi, rms_result),
-                  os.path.join(output_dir, 'cfc.xml'))
+            if args.rms_plots:
+                for r in rms_result:
+                    hx.plotting.generate_rms_and_spectrum_plots(
+                        xfi, title=species, xsec_result=r, outdir=output_dir)
 
     return 0
 
