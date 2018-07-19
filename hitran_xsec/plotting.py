@@ -5,7 +5,6 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
 import numpy as np
-from typhon.physics import frequency2wavenumber
 from typhon.plots import HectoPascalFormatter
 
 from .fit import calc_fwhm_and_pressure_difference, func_2straights, do_fit
@@ -20,14 +19,19 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
     if ax is None:
         ax = plt.gca()
 
-    ax.scatter([x.temperature for x in xsecfileindex.files],
-               np.array([x.pressure for x in xsecfileindex.files]))
+    bands = list(xsecfileindex.cluster_by_band())
+    for i, band in enumerate(bands):
+        ax.scatter([x.temperature for x in band],
+                   [x.pressure for x in band],
+                   s=50 - i / (len(bands) - 1) * 40,
+                   label=f'{band[0].wmin}-{band[0].wmax} ({len(bands[i])})')
     ax.yaxis.set_major_formatter(HectoPascalFormatter())
     ax.invert_yaxis()
     if title:
         ax.set_title(title)
     ax.set_xlabel('T [K]')
     ax.set_ylabel('P [hPa]')
+    ax.legend()
 
 
 def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
@@ -217,11 +221,14 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
         ax = plt.gca()
 
     bands = [(b[0].wmin, b[0].wmax) for b in xsecfileindex.cluster_by_band()]
-    for band in bands:
-        xsecs = [x for x in rmsoutput
-                 if band[0] == x['wmin'] and band[1] == x['wmax']]
-        scatter_plot(*calc_fwhm_and_pressure_difference(xsecs),
-                     species, ax, label=f'{band[0]}-{band[1]}')
+    for i, band in enumerate(bands):
+        rms = [x for x in rmsoutput
+               if band[0] == x['wmin'] and band[1] == x['wmax']]
+        if not len(rms):
+            continue
+        xsecs = rms
+        scatter_plot(*calc_fwhm_and_pressure_difference(xsecs), species, ax,
+                     s=50 - i / (len(bands) - 1) * 40, label=f'{band[0]}-{band[1]}')
     plot_fit(ax, *calc_fwhm_and_pressure_difference(rmsoutput),
              outliers=outliers)
 
