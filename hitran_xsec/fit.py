@@ -28,7 +28,7 @@ def func_2straights(x, x0, a, b):
 def calc_fwhm_and_pressure_difference(xsec_result):
     fwhm = np.array([r['optimum_fwhm'] for r in xsec_result])
     pressure_diff = np.array(
-        [r['target_pressure'] - r['source_pressure'] for r in xsec_result])
+        [r['target_pressure'] - r['ref_pressure'] for r in xsec_result])
 
     return fwhm, pressure_diff
 

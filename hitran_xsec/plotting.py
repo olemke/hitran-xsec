@@ -33,7 +33,7 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
 def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
                                     outdir=''):
     """Plots the RMS for different FWHMs of the Lorentz filter."""
-    xsec_low = xsecfileindex.find_file(xsec_result['source_filename'])
+    xsec_low = xsecfileindex.find_file(xsec_result['ref_filename'])
     xsec_high = xsecfileindex.find_file(xsec_result['target_filename'])
 
     xsecs = {
