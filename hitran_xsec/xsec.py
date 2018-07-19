@@ -297,11 +297,11 @@ def optimize_xsec(xsec_low, xsec_high,
     logger.info(f"Done {xsec_name}")
 
     return {
-        'source_pressure': float(xsec_low.pressure),
+        'ref_pressure': float(xsec_low.pressure),
         'target_pressure': float(xsec_high.pressure),
-        'source_filename': xsec_low.filename,
+        'ref_filename': xsec_low.filename,
         'target_filename': xsec_high.filename,
-        'source_temp': float(xsec_low.temperature),
+        'ref_temp': float(xsec_low.temperature),
         'target_temp': float(xsec_high.temperature),
         'wmin': float(xsec_low.wmin),
         'wmax': float(xsec_low.wmax),
