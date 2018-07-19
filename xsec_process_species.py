@@ -44,7 +44,7 @@ def main():
         plt.gcf().savefig(os.path.join(output_dir, 'xsec_datasets.pdf'))
         plt.gcf().clear()
 
-        rms_file = os.path.join(output_dir, 'optimized.json')
+        rms_file = os.path.join(output_dir, 'xsec_rms.json')
         if os.path.exists(rms_file) and not args.ignore_rms:
             logger.info(f'Reading precalculated RMS values form {rms_file}.')
             rms_result = hx.xsec.load_rms_data(rms_file)
