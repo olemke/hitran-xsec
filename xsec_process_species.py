@@ -21,6 +21,8 @@ def parse_args():
                       help='Directory with cross section data files.')
     args.add_argument('-i', '--ignore-rms', action='store_true',
                       help='Ignore existing RMS file.')
+    args.add_argument('-r', '--rms-plots', action='store_true',
+                      help='Generate cross section and rms plots.')
     args.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
                       default='output',
                       help='Output directory.'
@@ -40,9 +42,11 @@ def main():
                                ignore='.*[^0-9._].*')
 
         # Scatter plot of available cross section data files
+        plotfile = os.path.join(output_dir, 'xsec_datasets.pdf')
         hx.plotting.plot_available_xsecs(xfi, title=species)
-        plt.gcf().savefig(os.path.join(output_dir, 'xsec_datasets.pdf'))
+        plt.gcf().savefig(plotfile)
         plt.gcf().clear()
+        logger.info(f'Wrote {plotfile}')
 
         rms_file = os.path.join(output_dir, 'xsec_rms.json')
         if os.path.exists(rms_file) and not args.ignore_rms:
@@ -52,14 +56,17 @@ def main():
             rms_result = hx.optimize_xsec_multi(xfi)
             hx.save_rms_data(rms_file, rms_result)
 
-        for r in rms_result:
-            hx.plotting.generate_rms_and_spectrum_plots(
-                xfi, title=species, xsec_result=r, outdir=output_dir)
-
         # Plot of best FWHM vs. pressure difference and the fit
+        plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
         hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
-        plt.gcf().savefig(os.path.join(output_dir, 'xsec_scatter.pdf'))
+        plt.gcf().savefig(plotfile)
         plt.gcf().clear()
+        logger.info(f'Wrote {plotfile}')
+
+        if args.rms_plots:
+            for r in rms_result:
+                hx.plotting.generate_rms_and_spectrum_plots(
+                    xfi, title=species, xsec_result=r, outdir=output_dir)
 
         axml.save(hx.fit.gen_arts(xfi, rms_result),
                   os.path.join(output_dir, 'cfc.xml'))
