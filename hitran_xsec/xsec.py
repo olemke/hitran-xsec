@@ -153,6 +153,10 @@ class XsecFileIndex:
     def __repr__(self):
         return '\n'.join([f.filename for f in self.files])
 
+    def find_file(self, filename):
+        ret = [x for x in self.files if x.filename == filename]
+        return ret if len(ret) > 1 else ret[0]
+
     def find(self, wmin=None, wmax=None, temperature=None, pressure=None):
         """Find cross sections that match the criteria."""
         return [x for x in self.files if
