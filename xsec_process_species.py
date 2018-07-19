@@ -15,7 +15,8 @@ def parse_args():
     """Parse command line arguments."""
     args = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    args.add_argument('species', help='Name of species to process.')
+    args.add_argument('species', metavar='SPECIES', nargs='+',
+                      help='Name of species to process.')
     args.add_argument('-d', '--directory', default='.',
                       help='Directory with cross section data files.')
     args.add_argument('-i', '--ignore-rms', action='store_true',
@@ -31,32 +32,37 @@ def main():
     logger = logging.getLogger(__name__)
     args = parse_args()
 
-    output_dir = os.path.join(args.output, args.species)
-    os.makedirs(output_dir, exist_ok=True)
+    for species in args.species:
+        output_dir = os.path.join(args.output, species)
+        os.makedirs(output_dir, exist_ok=True)
 
-    xfi = hx.XsecFileIndex(directory=args.directory, species=args.species,
-                           ignore='.*[^0-9._].*')
+        xfi = hx.XsecFileIndex(directory=args.directory, species=species,
+                               ignore='.*[^0-9._].*')
 
-    # Scatter plot of available cross section data files
-    hx.plotting.plot_available_xsecs(xfi, title=args.species)
-    plt.gcf().savefig(os.path.join(output_dir, 'xsec_datasets.pdf'))
-    plt.gcf().clear()
+        # Scatter plot of available cross section data files
+        hx.plotting.plot_available_xsecs(xfi, title=species)
+        plt.gcf().savefig(os.path.join(output_dir, 'xsec_datasets.pdf'))
+        plt.gcf().clear()
 
-    rms_file = os.path.join(output_dir, 'optimized.json')
-    if os.path.exists(rms_file) and not args.ignore_rms:
-        logger.info(f'Reading precalculated RMS values form {rms_file}.')
-        rms_result = hx.xsec.load_rms_data(rms_file)
-    else:
-        rms_result = hx.optimize_xsec_multi(xfi)
-        hx.save_rms_data(rms_file, rms_result)
+        rms_file = os.path.join(output_dir, 'optimized.json')
+        if os.path.exists(rms_file) and not args.ignore_rms:
+            logger.info(f'Reading precalculated RMS values form {rms_file}.')
+            rms_result = hx.xsec.load_rms_data(rms_file)
+        else:
+            rms_result = hx.optimize_xsec_multi(xfi)
+            hx.save_rms_data(rms_file, rms_result)
 
-    # Plot of best FWHM vs. pressure difference and the fit
-    hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
-    plt.gcf().savefig(os.path.join(output_dir, 'xsec_scatter.pdf'))
-    plt.gcf().clear()
+        for r in rms_result:
+            hx.plotting.generate_rms_and_spectrum_plots(
+                xfi, title=species, xsec_result=r, outdir=output_dir)
 
-    axml.save(hx.fit.gen_arts(xfi, rms_result),
-              os.path.join(output_dir, 'cfc.xml'))
+        # Plot of best FWHM vs. pressure difference and the fit
+        hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
+        plt.gcf().savefig(os.path.join(output_dir, 'xsec_scatter.pdf'))
+        plt.gcf().clear()
+
+        axml.save(hx.fit.gen_arts(xfi, rms_result),
+                  os.path.join(output_dir, 'cfc.xml'))
 
     return 0
 
