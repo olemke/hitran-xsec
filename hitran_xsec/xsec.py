@@ -63,6 +63,17 @@ class XsecFile:
     def __repr__(self):
         return 'XsecFile:' + self.filename
 
+    def __hash__(self):
+        return hash(f'{self.species}{self.pressure}{self.temperature}'
+                    f'{self.wmin}{self.wmax}')
+
+    def __eq__(self, x):
+        return (self.species == x.species
+                and self.pressure == x.pressure
+                and self.temperature == x.temperature
+                and self.wmin == x.wmin
+                and self.wmax == x.wmax)
+
     def read_hitran_xsec(self):
         """Read HITRAN cross section data file."""
         if self._data is not None:
