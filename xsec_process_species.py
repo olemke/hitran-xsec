@@ -16,7 +16,8 @@ def parse_args():
     args = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     args.add_argument('species', metavar='SPECIES', nargs='+',
-                      help='Name of species to process.')
+                      help='Name of species to process.'
+                           'Pass "rfmip" for all RFMIP species.')
     args.add_argument('-d', '--directory', default='.',
                       help='Directory with cross section data files.')
     args.add_argument('-i', '--ignore-rms', action='store_true',
@@ -34,12 +35,18 @@ def main():
     logger = logging.getLogger(__name__)
     args = parse_args()
 
+    if args.species[0] == 'rfmip':
+        args.species = RFMIP_SPECIES
     for species in args.species:
         output_dir = os.path.join(args.output, species)
-        os.makedirs(output_dir, exist_ok=True)
 
         xfi = hx.XsecFileIndex(directory=args.directory, species=species,
                                ignore='.*[^0-9._].*')
+        if xfi.files:
+            os.makedirs(output_dir, exist_ok=True)
+        else:
+            logger.warning(f'No input files found for {species}.')
+            continue
 
         # Scatter plot of available cross section data files
         plotfile = os.path.join(output_dir, 'xsec_datasets.pdf')
@@ -53,7 +60,7 @@ def main():
             logger.info(f'Reading precalculated RMS values form {rms_file}.')
             rms_result = hx.xsec.load_rms_data(rms_file)
         else:
-            rms_result = hx.optimize_xsec_multi(xfi)
+            rms_result = [x for x in hx.optimize_xsec_multi(xfi) if x]
             if rms_result:
                 hx.save_rms_data(rms_file, rms_result)
                 logger.info(f'Wrote {rms_file}')
