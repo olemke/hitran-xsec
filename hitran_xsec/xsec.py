@@ -161,6 +161,7 @@ class XsecFileIndex:
                         self.files.append(xsec_file)
                 except XsecError:
                     self.failed_files.append(f)
+        self.uniquify()
 
     @classmethod
     def from_list(cls, xsec_file_list):
@@ -170,6 +171,21 @@ class XsecFileIndex:
 
     def __repr__(self):
         return '\n'.join([f.filename for f in self.files])
+
+    def uniquify(self):
+        nfiles = len(self.files)
+        checked = {}
+        uniqfiles = []
+        for item in self.files:
+            marker = item
+            if marker in checked:
+                continue
+            checked[marker] = 1
+            uniqfiles.append(item)
+        nuniqfiles = len(uniqfiles)
+        if nuniqfiles < nfiles:
+            logger.info(f'Removed {nfiles - nuniqfiles} duplicate data files.')
+            self.files = uniqfiles
 
     def find_file(self, filename):
         ret = [x for x in self.files if x.filename == filename]
@@ -287,6 +303,10 @@ def optimize_xsec(xsec_low, xsec_high,
 
     fgrid_conv = np.linspace(xsec_low.fmin, xsec_low.fmax, xsec_low.nfreq)
     fgrid_high = np.linspace(xsec_high.fmin, xsec_high.fmax, xsec_high.nfreq)
+
+    if xsec_low == xsec_high:
+        logger.info(f'{xsec_high} and {xsec_low} are identical. Ignoring.')
+        return None
 
     if len(xsec_high.data) != len(fgrid_high):
         logger.error(f"Size mismatch in data (skipping): nfreq: "
