@@ -332,7 +332,8 @@ def optimize_xsec(xsec_low, xsec_high,
 
         rms[i] = calc_xsec_rms(xsec_conv, xsec_high_interp)
 
-    rms_optimum_fwhm = fwhms[np.argmin(rms)]
+    rms_optimum_fwhm_index = np.argmin(rms)
+    rms_optimum_fwhm = fwhms[rms_optimum_fwhm_index]
 
     logger.info(f"Done {xsec_name}")
 
@@ -349,6 +350,7 @@ def optimize_xsec(xsec_low, xsec_high,
         'fmax': float(xsec_low.fmax),
         'nfreq': int(xsec_low.nfreq),
         'optimum_fwhm': rms_optimum_fwhm,
+        'optimum_fwhm_index': int(rms_optimum_fwhm_index),
         'fwhm_min': fwhm_min,
         'fwhm_max': fwhm_max,
         'fwhm_nsteps': int(fwhm_nsteps),
