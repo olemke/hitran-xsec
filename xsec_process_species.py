@@ -15,19 +15,21 @@ def parse_args():
     """Parse command line arguments."""
     args = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # Required commandline argument
     args.add_argument('species', metavar='SPECIES', nargs='+',
                       help='Name of species to process.'
                            'Pass "rfmip" for all RFMIP species.')
+    # Optional commandline arguments
     args.add_argument('-d', '--directory', default='.',
-                      help='Directory with cross section data files.')
+                      help='Directory with HITRAN cross section data files.')
     args.add_argument('-i', '--ignore-rms', action='store_true',
-                      help='Ignore existing RMS file.')
-    args.add_argument('-r', '--rms-plots', action='store_true',
-                      help='Generate cross section and rms plots.')
+                      help='Ignore existing RMS file (recalculate).')
     args.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
                       default='output',
-                      help='Output directory.'
-                           'A subdirectory SPECIES will be created inside.')
+                      help='Output directory. A subdirectory named SPECIES '
+                           'will be created inside.')
+    args.add_argument('-r', '--rms-plots', action='store_true',
+                      help='Generate cross section and rms plots.')
     return args.parse_args()
 
 
@@ -67,6 +69,7 @@ RFMIP_SPECIES = [
     'CF4',  # +++++ fit ok +++++
     'NF3',  # no air broadening, only N2
     'SO2F2',  # no air broadening, only N2
+
     # Halogenated Alcohols and Ethers
 
     # Hydrocarbons
@@ -93,8 +96,11 @@ RFMIP_SPECIES = [
     'HFC4310MEE',  # not available in Hitran
 
     # Iodocarbons and hydroiodocarbons
+
     # Nitriles, amines and other nitrogenated hydrocarbons
+
     # Other molecules
+
     # Sulfur-containing species
 
 ]
