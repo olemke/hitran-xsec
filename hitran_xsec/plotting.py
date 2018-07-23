@@ -83,44 +83,12 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
                   f"-{xsecs['high'].wmax:1.0f}",
             linewidth=0.5)
 
-    # Simple approach
     df = (xsecs['low'].fmax - xsecs['low'].fmin) / xsecs['low'].nfreq
-    xsec_simple_fwhm = (
-            df * xsecs['high'].pressure / xsecs['low'].pressure
-            * np.sqrt(xsecs['low'].temperature
-                      / xsecs['high'].temperature))
-    xsec_simple, conv, width = xsec_convolve_f(
-        xsecs['low'],
-        xsec_simple_fwhm / 2.,
-        run_lorentz_f,
-        LORENTZ_CUTOFF)
-    xsec_simple.pressure = xsecs['high'].pressure
-    if len(xsec_simple.data) != len(xsecs['high'].data):
-        fgrid_low = np.linspace(xsecs['low'].fmin, xsecs['low'].fmax,
-                                xsecs['low'].nfreq)
-
-        fgrid_high = np.linspace(xsecs['high'].fmin, xsecs['high'].fmax,
-                                 xsecs['high'].nfreq)
-
-        xsec_high = deepcopy(xsecs['low'])
-        xsec_high.data = np.interp(fgrid_low, fgrid_high,
-                                   xsecs['high'].data)
-    else:
-        xsec_high = xsecs['high']
-
-    rms_simple = calc_xsec_rms(xsec_simple, xsec_high)
-
-    ax.plot((fwhms[0] / 1e9, fwhms[-1] / 1e9),
-            (rms_simple, rms_simple),
-            linewidth=1,
-            label=f'RMS simple approach {rms_simple:.2e}'
-                  f'@{xsec_simple_fwhm/1e9:.1f} GHz')
-
     ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
     ax.legend(loc=1)
     ax.set_ylabel('RMS')
     ax.set_xlabel('FWHM of Lorentz filter [GHz]')
-    ax.set_title(title + f' fspacing: {df/1e9:g} GHz')
+    ax.set_title(title + f' fspacing: {df/1e9:.2g} GHz')
 
     fig.savefig(fname)
     plt.close(fig)
@@ -143,12 +111,8 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
     # Plot xsec at high pressure
     plot_xsec(xsecs['high'], ax=ax, linewidth=linewidth)
 
-    # Plot simple approach
-    plot_xsec(xsec_simple, ax=ax, linewidth=linewidth,
-              label=f'Simple approach {xsec_simple_fwhm/1e9:1.2g} GHz')
-
     ax.legend(loc=1)
-    ax.set_title(title + f' fspacing: {df/1e9:g} GHz')
+    ax.set_title(title + f' fspacing: {df/1e9:.2g} GHz')
 
     fname = f"{xsec_name}_xsec_conv.pdf"
     fname = os.path.join(outdir, fname)
