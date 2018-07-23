@@ -1,6 +1,5 @@
 import logging
 import os
-from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
@@ -8,8 +7,7 @@ import numpy as np
 from typhon.plots import HectoPascalFormatter
 
 from .fit import calc_fwhm_and_pressure_difference, func_2straights, do_fit
-from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f,
-                   calc_xsec_rms)
+from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f)
 
 logger = logging.getLogger(__name__)
 
