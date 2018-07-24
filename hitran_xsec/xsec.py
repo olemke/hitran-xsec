@@ -363,16 +363,10 @@ def build_pairs_with_lowest_pressure(iterable):
     for b in iterable:
         for t in b:
             xsec_list = sorted(t, key=lambda x: x.pressure)
-            if len(xsec_list) > 1:
-                if xsec_list[0].pressure == 0:
-                    logger.warning(f'Ignoring '
-                                   f'temperature {xsec_list[0].temperature} in '
-                                   f'band {xsec_list[0].wmin} '
-                                   f'- {xsec_list[0].wmax} as pressure is 0'
-                                   )
-                else:
-                    yield from ((xsec_list[0], xsec2) for xsec2 in
-                                itertools.islice(xsec_list, 1, len(xsec_list)))
+            xsec_no_p0 = list(filter(lambda x: x.pressure != 0, xsec_list))
+            if len(xsec_no_p0) > 1:
+                yield from ((xsec_no_p0[0], xsec2) for xsec2 in
+                            itertools.islice(xsec_no_p0, 1, len(xsec_no_p0)))
             else:
                 logger.warning(f'Not enough xsecs for '
                                f'temperature {xsec_list[0].temperature} in '
