@@ -359,7 +359,10 @@ def optimize_xsec(xsec_low, xsec_high,
 
 
 def build_pairs_with_lowest_pressure(iterable):
-    """Pairs lowest pressure xsec with each higher pressure"""
+    """Pairs lowest pressure xsec with each higher pressure.
+
+    Cross sections with pressure 0 are ignored.
+    """
     for b in iterable:
         for t in b:
             xsec_list = sorted(t, key=lambda x: x.pressure)
