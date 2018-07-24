@@ -39,18 +39,13 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
     xsec_low = xsecfileindex.find_file(xsec_result['ref_filename'])
     xsec_high = xsecfileindex.find_file(xsec_result['target_filename'])
 
-    xsecs = {
-        'low': xsec_low,
-        'high': xsec_high,
-    }
-
     xsec_name = (
-        f"{xsecs['low'].species}_"
-        f"{xsecs['low'].wmin:.0f}"
-        f"-{xsecs['low'].wmax:.0f}"
-        f"_{xsecs['low'].temperature:.1f}K_"
-        f"{xsecs['low'].pressure:.0f}P_{xsecs['high'].temperature:.1f}K_"
-        f"{xsecs['high'].pressure:.0f}P")
+        f"{xsec_low.species}_"
+        f"{xsec_low.wmin:.0f}"
+        f"-{xsec_low.wmax:.0f}"
+        f"_{xsec_low.temperature:.1f}K_"
+        f"{xsec_low.pressure:.0f}P_{xsec_high.temperature:.1f}K_"
+        f"{xsec_high.pressure:.0f}P")
 
     fname = f"{xsec_name}_rms.pdf"
     fname = os.path.join(outdir, fname)
@@ -66,22 +61,22 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
     if rms_min_i < rms.size:
         ax.plot((fwhms[rms_min_i] / 1e9, fwhms[rms_min_i] / 1e9),
                 (np.min(rms), np.max(rms)),
-                linewidth=1,
+                linewidth=2,
                 label=f'Minimum RMS {rms_min:.2e}'
                       f'@{fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     ax.plot(fwhms / 1e9, rms,
-            label=f"T1: {xsecs['low'].temperature:.1f}K "
-                  f"P1: {xsecs['low'].pressure:.0f}P "
-                  f"f: {xsecs['low'].wmin:1.0f}"
-                  f"-{xsecs['low'].wmax:1.0f}\n"
-                  f"T2: {xsecs['high'].temperature:.1f}K "
-                  f"P2: {xsecs['high'].pressure:.0f}P "
-                  f"f: {xsecs['high'].wmin:1.0f}"
-                  f"-{xsecs['high'].wmax:1.0f}",
-            linewidth=0.5)
+            label=f"T1: {xsec_low.temperature:.1f}K "
+                  f"P1: {xsec_low.pressure:.0f}P "
+                  f"f: {xsec_low.wmin:1.0f}"
+                  f"-{xsec_low.wmax:1.0f}\n"
+                  f"T2: {xsec_high.temperature:.1f}K "
+                  f"P2: {xsec_high.pressure:.0f}P "
+                  f"f: {xsec_high.wmin:1.0f}"
+                  f"-{xsec_high.wmax:1.0f}",
+            linewidth=1)
 
-    df = (xsecs['low'].fmax - xsecs['low'].fmin) / xsecs['low'].nfreq
+    df = (xsec_low.fmax - xsec_low.fmin) / xsec_low.nfreq
     ax.yaxis.set_major_formatter(mplticker.FormatStrFormatter('%1.0e'))
     ax.legend(loc=1)
     ax.set_ylabel('RMS')
@@ -94,20 +89,20 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
 
     fig, ax = plt.subplots()
 
-    linewidth = 0.5
+    linewidth = 1
     # Plot xsec at low pressure
-    plot_xsec(xsecs['low'], ax=ax, linewidth=linewidth)
+    plot_xsec(xsec_low, ax=ax, linewidth=linewidth)
 
     # Plot convoluted xsec
-    xsecs['conv'], conv, width = xsec_convolve_f(xsecs['low'],
-                                                 fwhms[rms_min_i] / 2,
-                                                 run_lorentz_f, LORENTZ_CUTOFF)
+    xsec_conv, conv, width = xsec_convolve_f(xsec_low,
+                                             fwhms[rms_min_i] / 2,
+                                             run_lorentz_f, LORENTZ_CUTOFF)
 
-    plot_xsec(xsecs['conv'], ax=ax, linewidth=linewidth,
+    plot_xsec(xsec_conv, ax=ax, linewidth=linewidth,
               label=f'Lorentz FWHM {fwhms[rms_min_i]/1e9:1.2g} GHz')
 
     # Plot xsec at high pressure
-    plot_xsec(xsecs['high'], ax=ax, linewidth=linewidth)
+    plot_xsec(xsec_high, ax=ax, linewidth=linewidth)
 
     ax.legend(loc=1)
     ax.set_title(title + f' fspacing: {df/1e9:.2g} GHz')
