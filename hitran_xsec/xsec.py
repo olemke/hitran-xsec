@@ -208,6 +208,12 @@ class XsecFileIndex:
         """Combine files for each temperature in a list."""
         return _cluster2(self.files, tgap, key=lambda x: x.temperature)
 
+    def cluster_by_band_and_pressure(self, wgap=1, pgap=3):
+        """Combine files for each band and pressure in a nested list."""
+        return (_cluster2(l, wgap, key=lambda x: x.pressure)
+                for l in _cluster2(self.files, wgap, key=lambda x: x.wmin,
+                                   key2=lambda x: x.wmax))
+
     def cluster_by_band_and_temperature(self, wgap=1, tgap=3):
         """Combine files for each band and temperature in a nested list."""
         return (_cluster2(l, tgap, key=lambda x: x.temperature)
