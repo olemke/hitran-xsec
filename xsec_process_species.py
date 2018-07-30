@@ -10,29 +10,6 @@ import hitran_xsec as hx
 
 logging.basicConfig(level=logging.INFO)
 
-
-def parse_args():
-    """Parse command line arguments."""
-    args = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    # Required commandline argument
-    args.add_argument('species', metavar='SPECIES', nargs='+',
-                      help='Name of species to process.'
-                           'Pass "rfmip" for all RFMIP species.')
-    # Optional commandline arguments
-    args.add_argument('-d', '--directory', default='.',
-                      help='Directory with HITRAN cross section data files.')
-    args.add_argument('-i', '--ignore-rms', action='store_true',
-                      help='Ignore existing RMS file (recalculate).')
-    args.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
-                      default='output',
-                      help='Output directory. A subdirectory named SPECIES '
-                           'will be created inside.')
-    args.add_argument('-r', '--rms-plots', action='store_true',
-                      help='Generate cross section and rms plots.')
-    return args.parse_args()
-
-
 RFMIP_SPECIES = [
     # Alcohols, ethers and other oxygenated hydrocarbons
 
@@ -58,7 +35,7 @@ RFMIP_SPECIES = [
     'CFC-115',  # only data for 0 torr
 
     # Fully Fluorinated Species
-    'C2F6',  # !!!!! bad fit !!!!!
+    'C2F6',  # !!!!! bad fit !!!!! no high pressure differences available
     'C3F8',  # no air broadening, only N2
     'C4F10',  # no air broadening, only N2
     'n-C5F12',  # no air broadening, only N2
@@ -77,7 +54,7 @@ RFMIP_SPECIES = [
     # Hydrochlorofluorocarbons (HCFCs)
     'HCFC-141b',  # only data for 0 torr
     'HCFC-142b',  # only data for 0 torr
-    'HCFC-22',  # !!!!! bad fit !!!!!, no high pressure differences available
+    'HCFC-22',  # !!!!! bad fit !!!!! no high pressure differences available
 
     # Hydrofluorocarbons (HFCs)
     'CFH2CF3',  # RFMIP name: HFC-134a, also available in Hitran under that
@@ -91,7 +68,7 @@ RFMIP_SPECIES = [
     'HFC236FA',  # not available in Hitran
     'CHF3',  # RFMIP name: HFC-23
     'HFC245FA',  # not available in Hitran
-    'HFC-32',  # not enough xsecs available
+    'HFC-32',  # !!!!! bad fit !!!!! not enough xsecs available
     'CH3CF2CH2CF3',  # RFMIP name: HFC365MFC, not enough xsecs available
     'HFC4310MEE',  # not available in Hitran
 
