@@ -38,15 +38,15 @@ def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
         data = np.hstack((pressure_diff.reshape(-1, 1), fwhm.reshape(-1, 1)))
         forrest = IsolationForest(contamination=0.001)
         forrest.fit(data)
-        decision = forrest.predict(data) != -1
+        non_outliers = forrest.predict(data) != -1
     else:
-        decision = np.ones_like(fwhm, dtype='bool')
+        non_outliers = np.ones_like(fwhm, dtype='bool')
     # Apriori for fitting the two lines
     p0 = (30000., 1e6, 1e6)
     # noinspection PyTypeChecker
-    popt, pcov = curve_fit(fit_func, pressure_diff[decision], fwhm[decision],
-                           p0=p0)
-    return popt, pcov, decision
+    popt, pcov = curve_fit(fit_func, pressure_diff[non_outliers],
+                           fwhm[non_outliers], p0=p0)
+    return popt, pcov, non_outliers
 
 
 def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
