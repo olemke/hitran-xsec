@@ -198,3 +198,19 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
     ax.xaxis.set_major_formatter(HectoPascalFormatter())
 
     return ax
+
+
+def plot_temperatures_differences(tpressure, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    for xsec1, xsec2 in zip(tpressure[:-1], tpressure[1:]):
+        ax.plot(np.linspace(xsec1.wmin, xsec1.wmax, xsec1.nfreq),
+                (xsec2.data - xsec1.data) / 10000
+                / (xsec2.temperature - xsec1.temperature),
+                label=f'{xsec2.temperature:.0f}K'
+                      f'-{xsec1.temperature:.0f}K'
+                      f'={xsec2.temperature-xsec1.temperature:.0f}K')
+    ax.set_xlabel('Wavenumber [cm$^{-1}$]')
+    ax.set_ylabel('Change per Kelvin [m$^2$/K]')
+    ax.legend()

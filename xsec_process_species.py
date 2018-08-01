@@ -111,7 +111,7 @@ def parse_args():
     # tfit command parser
     tfitparser = subparsers.add_parser('tfit',
                                        help='Analyze temperature behaviour.')
-    tfitparser.set_defaults(execute=analyze_temperature)
+    tfitparser.set_defaults(execute=compare_different_temperatures)
 
     # Required commandline argument
     parser.add_argument('species', metavar='SPECIES', nargs='+',
@@ -129,10 +129,10 @@ def prepare_data(directory, output_dir, species):
     return xfi
 
 
-def analyze_temperature(species, args):
+def compare_different_temperatures(species, args):
     output_dir = os.path.join(args.output, species)
 
-    xfi = prepare_data(args.directory, args.output, species)
+    xfi = prepare_data(args.directory, output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
@@ -140,19 +140,31 @@ def analyze_temperature(species, args):
     bands = xfi.cluster_by_band_and_pressure()
 
     for band in bands:
-        for pressure in band:
-            if len(pressure) > 3:
-                tpressure = sorted(pressure, key=lambda x: x.temperature)
+        for xsec_by_pressure in band:
+            tpressure = sorted(xsec_by_pressure, key=lambda x: x.temperature)
+            tpressure = [t for t in tpressure if
+                         t.nfreq == tpressure[0].nfreq]
+
+            if len(tpressure) > 3:
                 fig, ax = plt.subplots()
-                for xsec1, xsec2 in zip(tpressure[:-1], tpressure[1:]):
-                    ax.plot(xsec2.data - xsec1.data,
-                            label=f'{xsec2.temperature:.0f}K'
-                                  f'-{xsec1.temperature:.0f}K'
-                                  f'={xsec2.temperature-xsec1.temperature:.0f}')
-                ax.legend()
+                hx.plotting.plot_temperatures_differences(tpressure, ax=ax)
                 plotfile = os.path.join(
                     output_dir,
                     f'xsec_temperature_change_'
+                    f'{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_'
+                    f'{tpressure[0].pressure:.0f}P.pdf')
+                plt.savefig(plotfile)
+                logger.info(f'Wrote {plotfile}')
+
+                fig, ax = plt.subplots()
+                for xsec in tpressure:
+                    hx.plotting.plot_xsec(xsec, ax=ax)
+                ax.set_xlabel('Wavenumber [cm$^{-1}$]')
+                ax.set_ylabel('Cross section [m$^2$]')
+                ax.legend()
+                plotfile = os.path.join(
+                    output_dir,
+                    f'xsec_temperature_spectrum'
                     f'{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_'
                     f'{tpressure[0].pressure:.0f}P.pdf')
                 plt.savefig(plotfile)
