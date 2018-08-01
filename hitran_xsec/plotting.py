@@ -136,8 +136,8 @@ def plot_xsec(xsec, ax=None, **kwargs):
 def plot_fit(ax, fwhm, pressure_diff, outliers=False):
     """Plot the fitting function."""
     fit_func = func_2straights
-    popt, pcov, decision = do_fit(fwhm, pressure_diff, fit_func=fit_func,
-                                  outliers=outliers)
+    popt, pcov, decision = do_rms_fit(fwhm, pressure_diff, fit_func=fit_func,
+                                      outliers=outliers)
     p = np.linspace(np.min(pressure_diff), np.max(pressure_diff), 200)
     ax.plot(p,
             fit_func(p, *popt) / 1e9,

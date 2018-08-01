@@ -33,7 +33,7 @@ def calc_fwhm_and_pressure_difference(xsec_result):
     return fwhm, pressure_diff
 
 
-def do_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
+def do_rms_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
     if outliers:
         data = np.hstack((pressure_diff.reshape(-1, 1), fwhm.reshape(-1, 1)))
         forrest = IsolationForest(contamination=0.001)
@@ -73,7 +73,7 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     logger.info(f'genarts {len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
     fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
-    popt, pcov, decision = do_fit(fwhm, pressure_diff)
+    popt, pcov, decision = do_rms_fit(fwhm, pressure_diff)
     return XsecRecord(xsec_ref[0].species,
                       popt,
                       np.array([x.fmin for x in xsec_ref]),
