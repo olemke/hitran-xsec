@@ -1,4 +1,5 @@
 import logging
+import multiprocessing as mp
 import os
 
 import matplotlib.pyplot as plt
@@ -6,7 +7,8 @@ import matplotlib.ticker as mplticker
 import numpy as np
 from typhon.plots import HectoPascalFormatter
 
-from .fit import calc_fwhm_and_pressure_difference, func_2straights, do_fit
+from .fit import (calc_fwhm_and_pressure_difference, func_2straights,
+                  do_rms_fit, do_temperture_fit)
 from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f)
 
 logger = logging.getLogger(__name__)
@@ -200,17 +202,108 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
     return ax
 
 
-def plot_temperatures_differences(tpressure, ax=None):
+def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
     if ax is None:
         ax = plt.gca()
 
-    for xsec1, xsec2 in zip(tpressure[:-1], tpressure[1:]):
-        ax.plot(np.linspace(xsec1.wmin, xsec1.wmax, xsec1.nfreq),
-                (xsec2.data - xsec1.data) / 10000
-                / (xsec2.temperature - xsec1.temperature),
-                label=f'{xsec2.temperature:.0f}K'
-                      f'-{xsec1.temperature:.0f}K'
-                      f'={xsec2.temperature-xsec1.temperature:.0f}K')
+    if t0 is None:
+        t0 = tpressure[0]
+
+    if fit is None:
+        for xsec in tpressure[::-1]:
+            ax.plot(np.linspace(xsec.wmin, xsec.wmax, xsec.nfreq),
+                    (xsec.data - t0.data) / 10000,
+                    label=f'{xsec.temperature:.0f}K'
+                          f'-{t0.temperature:.0f}K'
+                          f'={xsec.temperature-t0.temperature:.0f}K')
+    else:
+        for xsec in tpressure[::-1]:
+            tdiff = xsec.temperature - t0.temperature
+            ax.plot(np.linspace(xsec.wmin, xsec.wmax, xsec.nfreq),
+                    (fit[:, 0] * tdiff + fit[:, 1]) / 10000,
+                    label=f'{xsec.temperature:.0f}K'
+                          f'-{t0.temperature:.0f}K'
+                          f'={xsec.temperature-t0.temperature:.0f}K')
+
     ax.set_xlabel('Wavenumber [cm$^{-1}$]')
-    ax.set_ylabel('Change per Kelvin [m$^2$/K]')
+    ax.set_ylabel('Change [m$^2$]')
     ax.legend()
+
+
+def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
+    tpressure = sorted(xsec_by_pressure, key=lambda x: x.temperature)
+    tpressure = [t for t in tpressure if
+                 t.nfreq == tpressure[0].nfreq]
+
+    tfit = {}
+    if len(tpressure) > 3:
+        temps = np.array([i.temperature for i in tpressure])
+        t0 = tpressure[np.argmin(np.abs(temps - tref))]
+        tfit['tref'] = t0.temperature
+        tfit['coeffs'] = do_temperture_fit(tpressure, t0)
+        tfit['xsecs'] = tpressure
+        fig, ax = plt.subplots()
+        plot_temperatures_differences(tpressure, t0, ax=ax)
+        ax.set_title(title)
+        plotfile = os.path.join(
+            output_dir,
+            f'xsec_temperature_change_'
+            f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
+            f'{t0.pressure:.0f}P.pdf')
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
+
+        fig, axes = plt.subplots(tfit['coeffs'].shape[1], 1)
+        for ax, fitparam in zip(axes, tfit['coeffs'].T):
+            ax.plot(np.linspace(t0.wmin, t0.wmax, t0.nfreq), fitparam)
+        axes[0].set_title(title)
+        plotfile = os.path.join(
+            output_dir,
+            f'xsec_temperature_change_fit_coeffs'
+            f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
+            f'{t0.pressure:.0f}P.pdf')
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
+
+        fig, ax = plt.subplots()
+        plot_temperatures_differences(tpressure, t0, fit=tfit['coeffs'], ax=ax)
+        ax.set_title(title)
+        plotfile = os.path.join(
+            output_dir,
+            f'xsec_temperature_change_fit_'
+            f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
+            f'{t0.pressure:.0f}P.pdf')
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
+
+        fig, ax = plt.subplots()
+        for xsec in tpressure:
+            plot_xsec(xsec, ax=ax)
+        ax.set_xlabel('Frequency [Hz]')
+        ax.set_ylabel('Cross section [m$^2$]')
+        ax.set_title(title)
+        ax.legend()
+        plotfile = os.path.join(
+            output_dir,
+            f'xsec_temperature_spectrum'
+            f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
+            f'{t0.pressure:.0f}P.pdf')
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
+        return {
+            'tref': float(tfit['tref']),
+            'slope': tfit['coeffs'][:, 0].tolist(),
+            'intersect': tfit['coeffs'][:, 1].tolist(),
+        }
+    else:
+        return None
+
+
+def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
+                          processes=None):
+    """Calculate best broadening width."""
+    bands = xsecfileindex.cluster_by_band_and_pressure()
+    with mp.Pool(processes=processes) as pool:
+        return [pool.starmap(temperature_fit,
+                             ((x, output_dir, title, tref)
+                              for band in bands for x in band))]
