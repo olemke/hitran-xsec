@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.stats import linregress
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
 
@@ -47,6 +48,23 @@ def do_rms_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
     popt, pcov = curve_fit(fit_func, pressure_diff[non_outliers],
                            fwhm[non_outliers], p0=p0)
     return popt, pcov, non_outliers
+
+
+def fit_temp_func(x, a, b):
+    return x * a + b
+
+
+def do_temperture_fit(xsecs, xref=None):
+    if xref is None:
+        xref = xsecs[0]
+
+    xsec_diff = np.array([x.data - xref.data for x in xsecs])
+    t_diff = [x.temperature - xref.temperature for x in xsecs]
+
+    fit = np.array([linregress(t_diff, y) for y in xsec_diff.T])
+
+    # Return slope and intersection only
+    return fit[:, 0:2]
 
 
 def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
