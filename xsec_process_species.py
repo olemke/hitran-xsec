@@ -61,7 +61,7 @@ RFMIP_SPECIES = [
     'CFH2CF3',  # RFMIP name: HFC-134a, also available in Hitran under that
     #             name, but without the 750-1600 band. This gives a better fit.
     #             +++++ fit ok +++++. Use band 750-1600.
-    'HFC125'  # not available in Hitran
+    'HFC125',  # not available in Hitran
     'HFC134AEQ',  # not available in Hitran
     'HFC-143a',  # not enough xsecs available
     'HFC-152a',  # only data for 0 torr
@@ -111,6 +111,8 @@ def parse_args():
     # tfit command parser
     tfitparser = subparsers.add_parser('tfit',
                                        help='Analyze temperature behaviour.')
+    tfitparser.add_argument('-t', '--tref', type=int, default=0,
+                            help='Reference temperature.')
     tfitparser.set_defaults(execute=compare_different_temperatures)
 
     # Required commandline argument
@@ -137,39 +139,8 @@ def compare_different_temperatures(species, args):
         logger.warning(f'No input files found for {species}.')
         return
 
-    bands = xfi.cluster_by_band_and_pressure()
-
-    for band in bands:
-        for xsec_by_pressure in band:
-            tpressure = sorted(xsec_by_pressure, key=lambda x: x.temperature)
-            tpressure = [t for t in tpressure if
-                         t.nfreq == tpressure[0].nfreq]
-
-            if len(tpressure) > 3:
-                fig, ax = plt.subplots()
-                hx.plotting.plot_temperatures_differences(tpressure, ax=ax)
-                plotfile = os.path.join(
-                    output_dir,
-                    f'xsec_temperature_change_'
-                    f'{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_'
-                    f'{tpressure[0].pressure:.0f}P.pdf')
-                plt.savefig(plotfile)
-                logger.info(f'Wrote {plotfile}')
-
-                fig, ax = plt.subplots()
-                for xsec in tpressure:
-                    hx.plotting.plot_xsec(xsec, ax=ax)
-                ax.set_xlabel('Wavenumber [cm$^{-1}$]')
-                ax.set_ylabel('Cross section [m$^2$]')
-                ax.legend()
-                plotfile = os.path.join(
-                    output_dir,
-                    f'xsec_temperature_spectrum'
-                    f'{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_'
-                    f'{tpressure[0].pressure:.0f}P.pdf')
-                plt.savefig(plotfile)
-                logger.info(f'Wrote {plotfile}')
-
+    tfit_result = hx.plotting.temperature_fit_multi(xfi, args.tref, output_dir,
+                                                    species, 1)
     pass
 
 
