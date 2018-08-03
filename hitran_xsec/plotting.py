@@ -239,7 +239,6 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
     if len(tpressure) > 3:
         temps = np.array([i.temperature for i in tpressure])
         t0 = tpressure[np.argmin(np.abs(temps - tref))]
-        tfit['tref'] = t0.temperature
         tfit['coeffs'] = do_temperture_fit(tpressure, t0)
         tfit['xsecs'] = tpressure
         fig, ax = plt.subplots()
@@ -291,7 +290,11 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
         return {
-            'tref': float(tfit['tref']),
+            'filename': t0.filename,
+            'wmin': float(t0.wmin),
+            'wmax': float(t0.wmax),
+            'tref': float(t0.temperature),
+            'pref': float(t0.pressure),
             'slope': tfit['coeffs'][:, 0].tolist(),
             'intersect': tfit['coeffs'][:, 1].tolist(),
         }
@@ -306,4 +309,4 @@ def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
     with mp.Pool(processes=processes) as pool:
         return [pool.starmap(temperature_fit,
                              ((x, output_dir, title, tref)
-                              for band in bands for x in band))]
+                              for x in band)) for band in bands]
