@@ -262,6 +262,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
+        plt.close()
         logger.info(f'Wrote {plotfile}')
 
         fig, ax = plt.subplots()
@@ -273,6 +274,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
+        plt.close()
         logger.info(f'Wrote {plotfile}')
 
         fig, ax = plt.subplots()
@@ -288,6 +290,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
+        plt.close()
         logger.info(f'Wrote {plotfile}')
         return {
             'filename': t0.filename,
