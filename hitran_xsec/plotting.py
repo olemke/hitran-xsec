@@ -259,7 +259,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
         axes[0].set_title(title)
         plotfile = os.path.join(
             output_dir,
-            f'xsec_temperature_change_fit_coeffs'
+            f'xsec_temperature_change_fit_coeffs_'
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
