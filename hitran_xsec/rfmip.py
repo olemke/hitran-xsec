@@ -9,20 +9,30 @@ RFMIP_SPECIES = {
     'C2Br2F4': {},  # RFMIP name: HALON2402, not in Hitran
 
     # Chlorocarbons and Hydrochlorocarbons
-    'CCl4': {},  # RFMIP Name: CARBON_TETRACHLORIDE
+    'CCl4': {  # RFMIP Name: CARBON_TETRACHLORIDE
+        'active': True,
+        'reference': True,
+        'bands': ((700, 860),),
+    },
     #          +++++ fit ok +++++, use only band 700-860
     'CH2Cl2': {},  # no air broadening, only N2
     'CH3CCl3': {},  # not available in Hitran
     'CHCl3': {},  # not available in Hitran
 
     # Chlorofluorocarbons (CFCs)
-    'CFC-11': {},  # +++++ fit ok +++++
-    'CFC11EQ': {},  # not in Hitran
-    'CFC-12': {},  # +++++ fit ok +++++
-    'CFC12EQ': {},  # not in Hitran
-    'CFC-113': {
+    'CFC-11': {  # +++++ fit ok +++++
         'active': True,
-    },  # only data for 0 torr
+        'reference': True,
+    },
+    'CFC11EQ': {},  # not in Hitran
+    'CFC-12': {  # +++++ fit ok +++++
+        'active': True,
+        'reference': True,
+    },
+    'CFC12EQ': {},  # not in Hitran
+    'CFC-113': {  # only data for 0 torr
+        'active': True,
+    },
     'CFC-114': {},  # only data for 0 torr
     'CFC-115': {},  # only data for 0 torr
 
@@ -35,7 +45,10 @@ RFMIP_SPECIES = {
     'C7F16': {},  # not in Hitran
     'C8F18': {},  # no air broadening, only N2
     'c-C4F8': {},  # only data for 0 Torr
-    'CF4': {},  # +++++ fit ok +++++
+    'CF4': {  # +++++ fit ok +++++
+        'active': True,
+        'reference': True,
+    },
     'NF3': {},  # no air broadening, only N2
     'SO2F2': {},  # no air broadening, only N2
 
@@ -49,9 +62,14 @@ RFMIP_SPECIES = {
     'HCFC-22': {},  # !!!!! bad fit !!!!! no high pressure differences available
 
     # Hydrofluorocarbons (HFCs)
-    'CFH2CF3': {},  # RFMIP name: HFC-134a, also available in Hitran under that
+    'HFC-134a': {  # RFMIP name: HFC-134a, also available in Hitran under that
+        #            +++++ fit ok +++++. Use band 750-1600.
+        'altname': 'CFH2CF3',
+        'active': True,
+        'reference': True,
+        'bands': ((750, 1600),),
+    },
     #             name, but without the 750-1600 band. This gives a better fit.
-    #             +++++ fit ok +++++. Use band 750-1600.
     'HFC125': {},  # not available in Hitran
     'HFC134AEQ': {},  # not available in Hitran
     'HFC-143a': {},  # not enough xsecs available
