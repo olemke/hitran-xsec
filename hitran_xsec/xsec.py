@@ -11,6 +11,7 @@ import numpy as np
 from scipy.integrate import simps
 from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
+from .rfmip import RFMIP_SPECIES
 
 __all__ = [
     'XsecError',
@@ -213,9 +214,9 @@ class XsecFileIndex:
         """Combine files for each temperature in a list."""
         return _cluster2(self.files, tgap, key=lambda x: x.temperature)
 
-    def cluster_by_band_and_pressure(self, wgap=1, pgap=3):
+    def cluster_by_band_and_pressure(self, wgap=1, pgap=100):
         """Combine files for each band and pressure in a nested list."""
-        return (_cluster2(l, wgap, key=lambda x: x.pressure)
+        return (_cluster2(l, pgap, key=lambda x: x.pressure)
                 for l in _cluster2(self.files, wgap, key=lambda x: x.wmin,
                                    key2=lambda x: x.wmax))
 
