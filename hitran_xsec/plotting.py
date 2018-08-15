@@ -215,7 +215,7 @@ def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
                     (xsec.data - t0.data) / 10000,
                     label=f'{xsec.temperature:.0f}K'
                           f'-{t0.temperature:.0f}K'
-                          f'={xsec.temperature-t0.temperature:.0f}K')
+                          f'={xsec.temperature-t0.temperature:.0f}K {xsec.pressure/100:.0f}hPa')
     else:
         for xsec in tpressure[::-1]:
             tdiff = xsec.temperature - t0.temperature
@@ -223,7 +223,7 @@ def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
                     (fit[:, 0] * tdiff + fit[:, 1]) / 10000,
                     label=f'{xsec.temperature:.0f}K'
                           f'-{t0.temperature:.0f}K'
-                          f'={xsec.temperature-t0.temperature:.0f}K')
+                          f'={xsec.temperature-t0.temperature:.0f}K {xsec.pressure/100:.0f}hPa')
 
     ax.set_xlabel('Wavenumber [cm$^{-1}$]')
     ax.set_ylabel('Change [m$^2$]')
@@ -250,6 +250,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
+        plt.close()
         logger.info(f'Wrote {plotfile}')
 
         fig, axes = plt.subplots(tfit['coeffs'].shape[1], 1)
