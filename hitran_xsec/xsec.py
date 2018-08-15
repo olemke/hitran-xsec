@@ -149,11 +149,16 @@ class XsecFileIndex:
         self.files = []
         self.ignored_files = []
         self.failed_files = []
-        if directory is not None:
+        if directory is not None and species is not None:
+            if 'altname' in RFMIP_SPECIES[species]:
+                speciesname = RFMIP_SPECIES[species]['altname']
+            else:
+                speciesname = species
+
             for f in glob(os.path.join(directory, '*.xsc')):
                 try:
                     xsec_file = XsecFile(f)
-                    if (species is not None and xsec_file.species != species or
+                    if (xsec_file.species != speciesname or
                             ignore is not None and re.match(ignore,
                                                             xsec_file.extra)):
                         self.ignored_files.append(f)
