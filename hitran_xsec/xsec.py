@@ -160,9 +160,10 @@ class XsecFileIndex:
             for f in glob(os.path.join(directory, '*.xsc')):
                 try:
                     xsec_file = XsecFile(f)
-                    if (xsec_file.species != speciesname or
-                            ignore is not None and re.match(ignore,
-                                                            xsec_file.extra)):
+                    if xsec_file.species != speciesname:
+                        pass
+                    elif ignore is not None and re.match(ignore,
+                                                         xsec_file.extra):
                         self.ignored_files.append(f)
                     else:
                         self.files.append(xsec_file)
