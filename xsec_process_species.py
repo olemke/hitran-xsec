@@ -184,14 +184,21 @@ def main():
     if args.style:
         plt.style.use(args.style)
 
-    if args.species[0] == 'rfmip':
-        args.species = hx.XSEC_SPECIES_INFO.keys()
+    species = []
+    for s in args.species:
+        if s in hx.XSEC_SPECIES_INFO.keys():
+            species.append(s)
+        elif s in hx.SPECIES_GROUPS.keys():
+            species += hx.SPECIES_GROUPS[s]
+        else:
+            raise RuntimeError(f'Unknown xsec species {s}. '
+                               'Not found in XSEC_SPECIES_INFO.')
 
     if args.command == 'arts':
-        args.execute(args.species, args)
+        args.execute(species, args)
     else:
-        for species in args.species:
-            args.execute(species, args)
+        for s in species:
+            args.execute(s, args)
 
     return 0
 
