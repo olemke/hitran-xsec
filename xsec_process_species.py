@@ -80,6 +80,8 @@ def prepare_data(directory, output_dir, species):
                            ignore='.*[^0-9._].*')
     if xfi.files:
         os.makedirs(output_dir, exist_ok=True)
+    if xfi.ignored_files:
+        logger.info(f'Ignored xsec files: {xfi.ignored_files}')
     return xfi
 
 
