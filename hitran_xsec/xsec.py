@@ -12,7 +12,7 @@ from scipy.integrate import simps
 from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
 
-from .rfmip import RFMIP_SPECIES
+from .xsec_species_info import XSEC_SPECIES_INFO
 
 __all__ = [
     'XsecError',
@@ -152,8 +152,8 @@ class XsecFileIndex:
         self.ignored_files = []
         self.failed_files = []
         if directory is not None and species is not None:
-            if 'altname' in RFMIP_SPECIES[species]:
-                speciesname = RFMIP_SPECIES[species]['altname']
+            if 'altname' in XSEC_SPECIES_INFO[species]:
+                speciesname = XSEC_SPECIES_INFO[species]['altname']
             else:
                 speciesname = species
 

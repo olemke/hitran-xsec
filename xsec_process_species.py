@@ -82,7 +82,7 @@ def prepare_data(directory, output_dir, species):
 
 
 def combine_data_for_arts(species, args):
-    active_species = {k: v for k, v in hx.RFMIP_SPECIES.items()
+    active_species = {k: v for k, v in hx.XSEC_SPECIES_INFO.items()
                       if k in species
                       and (('active' in v and v[
         'active']) or 'active' not in v)}
@@ -183,7 +183,7 @@ def main():
         plt.style.use(args.style)
 
     if args.species[0] == 'rfmip':
-        args.species = hx.RFMIP_SPECIES.keys()
+        args.species = hx.XSEC_SPECIES_INFO.keys()
 
     if args.command == 'arts':
         args.execute(args.species, args)

@@ -3,7 +3,7 @@
 
 from . import fit
 from . import plotting
-from . import rfmip
+from . import xsec_species_info
 from . import xsec
-from .rfmip import RFMIP_SPECIES
+from .xsec_species_info import XSEC_SPECIES_INFO
 from .xsec import *

@@ -7,8 +7,8 @@ from scipy.stats import linregress
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
 
-from .rfmip import RFMIP_SPECIES
 from .xsec import XsecError
+from .xsec_species_info import XSEC_SPECIES_INFO
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
             temps]
 
-    species = RFMIP_SPECIES[lbands[0][0][0].species]
+    species = XSEC_SPECIES_INFO[lbands[0][0][0].species]
     if 'arts_bands' in species:
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins) if
                     (band[index][0].wmin, band[index][0].wmax) in

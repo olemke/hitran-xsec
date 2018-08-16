@@ -1,6 +1,6 @@
 """Metadata for RFMIP species."""
 
-RFMIP_SPECIES = {
+XSEC_SPECIES_INFO = {
     # Alcohols, ethers and other oxygenated hydrocarbons
 
     # Bromocarbons, Hydrobromocarbons, and Halons
