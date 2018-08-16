@@ -314,3 +314,15 @@ def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
         return [pool.starmap(temperature_fit,
                              ((x, output_dir, title, tref)
                               for x in band)) for band in bands]
+
+
+def plot_xsec_records(xsec_records, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    for xr in xsec_records:
+        for fmin, fmax, xsec in zip(xr.fmin, xr.fmax, xr.xsec):
+            ax.plot(np.linspace(fmin, fmax, len(xsec)), xsec,
+                    label=f"{xr.species} {f2w(fmin)/100:.0f}-{f2w(fmax)/100:.0f}")
+
+    ax.legend()

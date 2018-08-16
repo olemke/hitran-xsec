@@ -144,8 +144,15 @@ def rms_and_fitting(species, args):
     # Plot of best FWHM vs. pressure difference and the fit
     if rms_result:
         xml_file = os.path.join(output_dir, 'cfc.xml')
-        axml.save((hx.fit.gen_arts(xfi, rms_result),), xml_file)
+        xsec_records = (hx.fit.gen_arts(xfi, rms_result),)
+        axml.save(xsec_records, xml_file)
         logger.info(f'Wrote {xml_file}')
+
+        plotfile = os.path.join(output_dir, 'xsec_bands.pdf')
+        plt.figure()
+        hx.plotting.plot_xsec_records(xsec_records)
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
 
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
         plt.figure()
