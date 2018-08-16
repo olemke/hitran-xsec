@@ -12,7 +12,7 @@ RFMIP_SPECIES = {
     'CCl4': {  # RFMIP Name: CARBON_TETRACHLORIDE
         'active': True,
         'reference': True,
-        'bands': ((700, 860),),
+        'arts_bands': ((700, 860),),
     },
     #          +++++ fit ok +++++, use only band 700-860
     'CH2Cl2': {},  # no air broadening, only N2
@@ -37,7 +37,9 @@ RFMIP_SPECIES = {
     'CFC-115': {},  # only data for 0 torr
 
     # Fully Fluorinated Species
-    'C2F6': {},  # !!!!! bad fit !!!!! no high pressure differences available
+    'C2F6': {
+        'arts_bands': ((680, 750), (1061, 1165), (1170, 1380),),
+    },  # !!!!! bad fit !!!!! no high pressure differences available
     'C3F8': {},  # no air broadening, only N2
     'C4F10': {},  # no air broadening, only N2
     'n-C5F12': {},  # no air broadening, only N2
@@ -59,7 +61,9 @@ RFMIP_SPECIES = {
     # Hydrochlorofluorocarbons (HCFCs)
     'HCFC-141b': {},  # only data for 0 torr
     'HCFC-142b': {},  # only data for 0 torr
-    'HCFC-22': {},  # !!!!! bad fit !!!!! no high pressure differences available
+    'HCFC-22': {
+        'arts_bands': ((760, 860), (1060, 1210), (1275, 1380),)
+    },  # !!!!! bad fit !!!!! no high pressure differences available
 
     # Hydrofluorocarbons (HFCs)
     'HFC-134a': {  # RFMIP name: HFC-134a, also available in Hitran under that
@@ -72,7 +76,9 @@ RFMIP_SPECIES = {
     #             name, but without the 750-1600 band. This gives a better fit.
     'HFC125': {},  # not available in Hitran
     'HFC134AEQ': {},  # not available in Hitran
-    'HFC-143a': {},  # not enough xsecs available
+    'HFC-143a': {
+        'arts_bands': ((580, 630), (694, 1504),)
+    },  # not enough xsecs available
     'HFC-152a': {},  # only data for 0 torr
     'HFC227EA': {},  # not available in Hitran
     'HFC236FA': {},  # not available in Hitran
