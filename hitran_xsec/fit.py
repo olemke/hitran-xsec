@@ -68,12 +68,13 @@ def do_temperture_fit(xsecs, xref=None):
     return fit[:, 0:2]
 
 
-def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
+def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
     if not rmsoutput:
         raise XsecError('RMS output is empty')
 
     # Find reference profiles for each band
     bands = xsecfileindex.cluster_by_band_and_temperature()
+
     # Convert generators to lists and sort by pressure
     lbands = [[sorted(l, key=lambda x: x.pressure) for l in t]
               for t in [list(b) for b in bands]]
