@@ -11,6 +11,7 @@ import numpy as np
 from scipy.integrate import simps
 from scipy.signal import fftconvolve
 from typhon.physics import wavenumber2frequency
+
 from .rfmip import RFMIP_SPECIES
 
 __all__ = [
@@ -165,6 +166,8 @@ class XsecFileIndex:
                         self.ignored_files.append(f)
                     else:
                         self.files.append(xsec_file)
+                        if species != speciesname:
+                            xsec_file.species = species
                 except XsecError:
                     self.failed_files.append(f)
         self.uniquify()
