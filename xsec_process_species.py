@@ -10,7 +10,13 @@ import typhon.arts.xml as axml
 
 import hitran_xsec as hx
 
-logging.basicConfig(level=logging.INFO)
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+RESET_SEQ = "\033[0m"
+COLOR_SEQ = "\033[1;%dm" % (30 + GREEN)
+BOLD_SEQ = "\033[1m"
+FORMAT = (f"[{BOLD_SEQ}%(filename)s:%(lineno)s"
+          f":{RESET_SEQ}{COLOR_SEQ}%(funcName)s{RESET_SEQ}] %(message)s")
+logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 
 def parse_args():
