@@ -7,6 +7,7 @@ from scipy.stats import linregress
 from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
 
+from .rfmip import RFMIP_SPECIES
 from .xsec import XsecError
 
 logger = logging.getLogger(__name__)
@@ -99,10 +100,11 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
     fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
     popt, pcov, decision = do_rms_fit(fwhm, pressure_diff)
-    return XsecRecord(xsec_ref[0].species,
-                      popt,
-                      np.array([x.fmin for x in xsec_ref]),
-                      np.array([x.fmax for x in xsec_ref]),
-                      np.array([x.pressure for x in xsec_ref]),
-                      np.array([x.temperature for x in xsec_ref]),
-                      [x.data / 10000. for x in xsec_ref])
+    return XsecRecord(
+        xsec_ref[0].species.translate(str.maketrans(dict.fromkeys('-'))),
+        popt,
+        np.array([x.fmin for x in xsec_ref]),
+        np.array([x.fmax for x in xsec_ref]),
+        np.array([x.pressure for x in xsec_ref]),
+        np.array([x.temperature for x in xsec_ref]),
+        [x.data / 10000. for x in xsec_ref])
