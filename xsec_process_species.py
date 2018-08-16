@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import logging
 import os
 import sys
@@ -10,7 +11,6 @@ import typhon.arts.xml as axml
 import hitran_xsec as hx
 
 logging.basicConfig(level=logging.INFO)
-
 
 
 def parse_args():
@@ -29,25 +29,40 @@ def parse_args():
 
     # RMS command parser
     subparsers = parser.add_subparsers()
-    rmsparser = subparsers.add_parser('rms',
+    subparser = subparsers.add_parser('rms',
                                       help='Calculate rms and perform fitting.')
-    rmsparser.add_argument('-i', '--ignore-rms', action='store_true',
+    subparser.add_argument('-i', '--ignore-rms', action='store_true',
                            help='Ignore existing RMS file (recalculate).')
-    rmsparser.add_argument('-r', '--rms-plots', action='store_true',
+    subparser.add_argument('-r', '--rms-plots', action='store_true',
                            help='Generate cross section and rms plots.')
-    rmsparser.set_defaults(execute=rms_and_fitting)
+    subparser.set_defaults(command='rms')
+    subparser.set_defaults(execute=rms_and_fitting)
+
+    subparser.add_argument('species', metavar='SPECIES', nargs='+',
+                           help='Name of species to process. '
+                                'Pass "rfmip" for all RFMIP species.')
 
     # tfit command parser
-    tfitparser = subparsers.add_parser('tfit',
-                                       help='Analyze temperature behaviour.')
-    tfitparser.add_argument('-t', '--tref', type=int, default=0,
-                            help='Reference temperature.')
-    tfitparser.set_defaults(execute=compare_different_temperatures)
+    subparser = subparsers.add_parser('tfit',
+                                      help='Analyze temperature behaviour.')
+    subparser.add_argument('-t', '--tref', type=int, default=0,
+                           help='Reference temperature.')
+    subparser.set_defaults(command='tfit')
+    subparser.set_defaults(execute=compare_different_temperatures)
 
     # Required commandline argument
-    parser.add_argument('species', metavar='SPECIES', nargs='+',
-                        help='Name of species to process. '
-                             'Pass "rfmip" for all RFMIP species.')
+    subparser.add_argument('species', metavar='SPECIES', nargs='+',
+                           help='Name of species to process. '
+                                'Pass "rfmip" for all RFMIP species.')
+
+    # arts export command parser
+    subparser = subparsers.add_parser('arts', help='Combine data for ARTS.')
+    subparser.set_defaults(command='arts')
+    subparser.set_defaults(execute=combine_data_for_arts)
+
+    subparser.add_argument('species', metavar='SPECIES', nargs='+',
+                           help='Name of species to process. '
+                                'Pass "rfmip" for all RFMIP species.')
 
     return parser.parse_args()
 
@@ -60,6 +75,28 @@ def prepare_data(directory, output_dir, species):
     return xfi
 
 
+def combine_data_for_arts(species, args):
+    active_species = {k: v for k, v in hx.RFMIP_SPECIES.items()
+                      if k in species
+                      and (('active' in v and v[
+        'active']) or 'active' not in v)}
+
+    combined_xml_file = os.path.join(args.output, 'cfc_combined.xml')
+    all_species = []
+    for s in species:
+        cfc_file = os.path.join(args.output, s, 'cfc.xml')
+        try:
+            data = axml.load(cfc_file)
+        except:
+            logger.warning(f"No xml file found for species {s}, ignoring")
+        else:
+            all_species.append(data)
+            logger.info(f'Added {s}')
+
+    axml.save(list(itertools.chain(*all_species)), combined_xml_file)
+    logger.info(f'Wrote {combined_xml_file}')
+
+
 def compare_different_temperatures(species, args):
     output_dir = os.path.join(args.output, species)
 
@@ -70,7 +107,11 @@ def compare_different_temperatures(species, args):
 
     tfit_result = hx.plotting.temperature_fit_multi(xfi, args.tref, output_dir,
                                                     species, 1)
-    pass
+
+    tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
+    if tfit_result:
+        hx.save_rms_data(tfit_file, tfit_result)
+        logger.info(f'Wrote {tfit_file}')
 
 
 def rms_and_fitting(species, args):
@@ -103,7 +144,7 @@ def rms_and_fitting(species, args):
     # Plot of best FWHM vs. pressure difference and the fit
     if rms_result:
         xml_file = os.path.join(output_dir, 'cfc.xml')
-        axml.save(hx.fit.gen_arts(xfi, rms_result), xml_file)
+        axml.save((hx.fit.gen_arts(xfi, rms_result),), xml_file)
         logger.info(f'Wrote {xml_file}')
 
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
@@ -131,8 +172,11 @@ def main():
     if args.species[0] == 'rfmip':
         args.species = hx.RFMIP_SPECIES.keys()
 
-    for species in args.species:
-        args.execute(species, args)
+    if args.command == 'arts':
+        args.execute(args.species, args)
+    else:
+        for species in args.species:
+            args.execute(species, args)
 
     return 0
 
