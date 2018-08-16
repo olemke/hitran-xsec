@@ -91,7 +91,7 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins) if
                     (band[index][0].wmin, band[index][0].wmax) in
                     species['arts_bands']]
-        logger.info(f"{lbands[0][0][0].species}:{len(xsec_ref)} bands out of "
+        logger.info(f"{lbands[0][0][0].species}: {len(xsec_ref)} bands out of "
                     f"{len(lbands)} selected for ARTS.")
     else:
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
