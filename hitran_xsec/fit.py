@@ -4,7 +4,6 @@ import os
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import linregress
-from sklearn.ensemble import IsolationForest
 from typhon.arts.xsec import XsecRecord
 
 from .xsec import XsecError
@@ -38,6 +37,7 @@ def calc_fwhm_and_pressure_difference(xsec_result):
 def do_rms_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
     if outliers:
         data = np.hstack((pressure_diff.reshape(-1, 1), fwhm.reshape(-1, 1)))
+        from sklearn.ensemble import IsolationForest
         forrest = IsolationForest(contamination=0.001)
         forrest.fit(data)
         non_outliers = forrest.predict(data) != -1
