@@ -35,6 +35,8 @@ def parse_args():
 
     # RMS command parser
     subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = 'command'
     subparser = subparsers.add_parser('rms',
                                       help='Calculate rms and perform fitting.')
     subparser.add_argument('-i', '--ignore-rms', action='store_true',
