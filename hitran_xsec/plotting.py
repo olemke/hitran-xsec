@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
 import numpy as np
+from typhon.physics import frequency2wavenumber as f2w
 from typhon.plots import HectoPascalFormatter
 
 from .fit import (calc_fwhm_and_pressure_difference, func_2straights,
