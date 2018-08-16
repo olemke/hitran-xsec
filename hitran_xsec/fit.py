@@ -83,7 +83,14 @@ def gen_arts(xsecfileindex, rmsoutput, reftemp=230):
     # Select profiles closest to reference temperature
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
             temps]
-    xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
+
+    species = RFMIP_SPECIES[lbands[0][0][0].species]
+    if 'arts_bands' in species:
+        xsec_ref = [band[index][0] for band, index in zip(lbands, mins) if
+                    (band[index][0].wmin, band[index][0].wmax) in
+                    species['arts_bands']]
+    else:
+        xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
 
     if not len(xsec_ref):
         raise XsecError('No matching xsecs found.')

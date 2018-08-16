@@ -67,7 +67,7 @@ RFMIP_SPECIES = {
         'altname': 'CFH2CF3',
         'active': True,
         'reference': True,
-        'bands': ((750, 1600),),
+        'arts_bands': ((750, 1600),),
     },
     #             name, but without the 750-1600 band. This gives a better fit.
     'HFC125': {},  # not available in Hitran
