@@ -221,7 +221,8 @@ def plot_temperatures_differences(tpressure: List[XsecFile], t0=None, fit=None,
                     (xsec.data - t0.data) / 10000,
                     label=f'{xsec.temperature:.0f}K'
                           f'-{t0.temperature:.0f}K'
-                          f'={xsec.temperature-t0.temperature:.0f}K {xsec.pressure/100:.0f}hPa')
+                          f'={xsec.temperature-t0.temperature:.0f}K '
+                          f'{xsec.pressure/100:.0f}hPa')
     else:
         for xsec in tpressure[::-1]:
             tdiff = xsec.temperature - t0.temperature
@@ -229,7 +230,8 @@ def plot_temperatures_differences(tpressure: List[XsecFile], t0=None, fit=None,
                     (fit[:, 0] * tdiff + fit[:, 1]) / 10000,
                     label=f'{xsec.temperature:.0f}K'
                           f'-{t0.temperature:.0f}K'
-                          f'={xsec.temperature-t0.temperature:.0f}K {xsec.pressure/100:.0f}hPa')
+                          f'={xsec.temperature-t0.temperature:.0f}K '
+                          f'{xsec.pressure/100:.0f}hPa')
 
     ax.set_xlabel('Wavenumber [cm$^{-1}$]')
     ax.set_ylabel('Change [m$^2$]')
@@ -334,6 +336,7 @@ def plot_xsec_records(xsec_records: Tuple[XsecRecord], ax=None):
     for xr in xsec_records:
         for fmin, fmax, xsec in zip(xr.fmin, xr.fmax, xr.xsec):
             ax.plot(np.linspace(fmin, fmax, len(xsec)), xsec,
-                    label=f"{xr.species} {f2w(fmin)/100:.0f}-{f2w(fmax)/100:.0f}")
+                    label=f"{xr.species} {f2w(fmin)/100:.0f}"
+                          f"-{f2w(fmax)/100:.0f}")
 
     ax.legend()
