@@ -6,6 +6,7 @@ import os
 import re
 from copy import deepcopy
 from glob import glob
+from typing import Iterable
 
 import numpy as np
 from scipy.integrate import simps
@@ -244,7 +245,7 @@ def _pairify(it):
     return zip(itertools.chain([first, first], it0), it1)
 
 
-def _cluster2(iterable, maxgap, key=lambda x: x, key2=None):
+def _cluster2(iterable: Iterable, maxgap, key=lambda x: x, key2=None):
     """Cluster sequence elements by distance."""
     prev = None
     group = []
@@ -279,7 +280,7 @@ def run_lorentz_f(npoints, fstep, hwhm, cutoff=None):
         return np.array([1.])
 
 
-def xsec_convolve_f(xsec1, hwhm, convfunc, cutoff=None):
+def xsec_convolve_f(xsec1: XsecFile, hwhm, convfunc, cutoff=None):
     """Convolve cross section data with the given function."""
     fstep = (xsec1.fmax - xsec1.fmin) / xsec1.nfreq
 
@@ -291,18 +292,18 @@ def xsec_convolve_f(xsec1, hwhm, convfunc, cutoff=None):
     return xsec_conv, conv_f, width
 
 
-def xsec_convolve_simple(xsec1, hwhm, cutoff=None):
+def xsec_convolve_simple(xsec1: XsecFile, hwhm, cutoff=None):
     """Convolve cross section data with the Lorentz function."""
     return xsec_convolve_f(xsec1, hwhm, run_lorentz_f, cutoff)
 
 
-def calc_xsec_rms(xsec1, xsec2):
+def calc_xsec_rms(xsec1: XsecFile, xsec2: XsecFile):
     """Calculate RMS between two cross sections."""
     return np.sqrt(np.mean(np.square(
         xsec1.data / np.sum(xsec1.data) - xsec2.data / np.sum(xsec2.data))))
 
 
-def optimize_xsec(xsec_low, xsec_high,
+def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
                   fwhm_min=0.01e9, fwhm_max=20.01e9, fwhm_nsteps=1000):
     """Find the broadening width with lowest RMS."""
 
@@ -375,7 +376,7 @@ def optimize_xsec(xsec_low, xsec_high,
     }
 
 
-def build_pairs_with_lowest_pressure(iterable):
+def build_pairs_with_lowest_pressure(iterable: Iterable):
     """Pairs lowest pressure xsec with each higher pressure.
 
     Cross sections with pressure 0 are ignored.
@@ -394,7 +395,7 @@ def build_pairs_with_lowest_pressure(iterable):
                                )
 
 
-def optimize_xsec_multi(xsecfileindex, processes=None):
+def optimize_xsec_multi(xsecfileindex: XsecFileIndex, processes=None):
     """Calculate best broadening width."""
     bands = xsecfileindex.cluster_by_band_and_temperature()
     pressure_pairs = build_pairs_with_lowest_pressure(bands)

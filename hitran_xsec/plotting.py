@@ -1,21 +1,24 @@
 import logging
 import multiprocessing as mp
 import os
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mplticker
 import numpy as np
+from typhon.arts.xsec import XsecRecord
 from typhon.physics import frequency2wavenumber as f2w
 from typhon.plots import HectoPascalFormatter
 
 from .fit import (calc_fwhm_and_pressure_difference, func_2straights,
                   do_rms_fit, do_temperture_fit)
-from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f)
+from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f, XsecFile,
+                   XsecFileIndex)
 
 logger = logging.getLogger(__name__)
 
 
-def plot_available_xsecs(xsecfileindex, title=None, ax=None):
+def plot_available_xsecs(xsecfileindex: XsecFileIndex, title=None, ax=None):
     """Plots the available temperatures and pressures of cross section data."""
     if ax is None:
         ax = plt.gca()
@@ -36,8 +39,8 @@ def plot_available_xsecs(xsecfileindex, title=None, ax=None):
     ax.legend()
 
 
-def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
-                                    outdir=''):
+def generate_rms_and_spectrum_plots(xsecfileindex: XsecFileIndex, title,
+                                    xsec_result, outdir=''):
     """Plots the RMS for different FWHMs of the Lorentz filter."""
     xsec_low = xsecfileindex.find_file(xsec_result['ref_filename'])
     xsec_high = xsecfileindex.find_file(xsec_result['target_filename'])
@@ -117,7 +120,7 @@ def generate_rms_and_spectrum_plots(xsecfileindex, title, xsec_result,
     logger.info(f'File saved: {fname}')
 
 
-def plot_xsec(xsec, ax=None, **kwargs):
+def plot_xsec(xsec: XsecFile, ax=None, **kwargs):
     """Plot cross section data."""
     if ax is None:
         ax = plt.gca()
@@ -169,7 +172,8 @@ def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
         ax.set_title(title)
 
 
-def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
+def scatter_and_fit(xsecfileindex: XsecFileIndex, rmsoutput, species=None,
+                    outliers=False,
                     ax=None):
     """Scatter plot of the FWHM with the lowest RMS."""
     if not rmsoutput:
@@ -203,7 +207,8 @@ def scatter_and_fit(xsecfileindex, rmsoutput, species=None, outliers=False,
     return ax
 
 
-def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
+def plot_temperatures_differences(tpressure: List[XsecFile], t0=None, fit=None,
+                                  ax=None):
     if ax is None:
         ax = plt.gca()
 
@@ -231,7 +236,8 @@ def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
     ax.legend(fontsize='xx-small')
 
 
-def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
+def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
+                    tref=230):
     tpressure = sorted(xsec_by_pressure, key=lambda x: x.temperature)
     tpressure = [t for t in tpressure if
                  t.nfreq == tpressure[0].nfreq]
@@ -311,7 +317,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
         }
 
 
-def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
+def temperature_fit_multi(xsecfileindex: XsecFileIndex, tref, output_dir, title,
                           processes=None):
     """Calculate best broadening width."""
     bands = xsecfileindex.cluster_by_band_and_pressure()
@@ -321,7 +327,7 @@ def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
                              for band in bands for x in band))
 
 
-def plot_xsec_records(xsec_records, ax=None):
+def plot_xsec_records(xsec_records: Tuple[XsecRecord], ax=None):
     if ax is None:
         ax = plt.gca()
 
