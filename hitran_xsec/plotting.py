@@ -303,8 +303,6 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
             'slope': tfit['coeffs'][:, 0].tolist(),
             'intersect': tfit['coeffs'][:, 1].tolist(),
         }
-    else:
-        return None
 
 
 def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
@@ -312,9 +310,9 @@ def temperature_fit_multi(xsecfileindex, tref, output_dir, title,
     """Calculate best broadening width."""
     bands = xsecfileindex.cluster_by_band_and_pressure()
     with mp.Pool(processes=processes) as pool:
-        return [pool.starmap(temperature_fit,
-                             ((x, output_dir, title, tref)
-                              for x in band)) for band in bands]
+        return pool.starmap(temperature_fit,
+                            ((x, output_dir, title, tref)
+                             for band in bands for x in band))
 
 
 def plot_xsec_records(xsec_records, ax=None):

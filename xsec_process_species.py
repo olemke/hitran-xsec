@@ -115,8 +115,9 @@ def compare_different_temperatures(species, args):
         logger.warning(f'No input files found for {species}.')
         return
 
-    tfit_result = hx.plotting.temperature_fit_multi(xfi, args.tref, output_dir,
-                                                    species, 1)
+    tfit_result = hx.plotting.temperature_fit_multi(xfi, args.tref,
+                                                    output_dir, species, 1)
+    tfit_result = [x for x in tfit_result if x]
 
     tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
     if tfit_result:
@@ -154,7 +155,17 @@ def rms_and_fitting(species, args):
     # Plot of best FWHM vs. pressure difference and the fit
     if rms_result:
         xml_file = os.path.join(output_dir, 'cfc.xml')
-        xsec_records = (hx.fit.gen_arts(xfi, rms_result),)
+
+        # Load temperature fit if available
+        try:
+            tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
+            tfit_result = hx.xsec.load_rms_data(tfit_file)
+            logger.info(f'Loaded temperature fit data for {species}')
+        except:
+            logger.info(f'No temperature fit data for {species}')
+            tfit_result = None
+
+        xsec_records = (hx.fit.gen_arts(xfi, rms_result, tfit_result),)
         axml.save(xsec_records, xml_file)
         logger.info(f'Wrote {xml_file}')
 

@@ -96,6 +96,37 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
     else:
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
 
+    if tfitoutput:
+        tfit_slope = []
+        tfit_intersect = []
+        tfit_reftemp = []
+        for xs in xsec_ref:
+            tfit_match = [t for t in tfitoutput if
+                          np.isclose(t['wmin'], xs.wmin)
+                          and np.isclose(t['wmax'], xs.wmax)
+                          and np.isclose(t['pref'], xs.pressure)]
+            if not len(tfit_match):
+                tfit_slope.append([0])
+                tfit_intersect.append([0])
+                tfit_reftemp.append([0])
+                logger.warning(f'No matching temperature fit data found '
+                               f'for {xs.species} in band '
+                               f'{xs.wmin}-{xs.wmax}')
+            else:
+                if len(tfit_match) > 1:
+                    logger.warning(f'More than one ({len(tfit_match)}) matching '
+                                   f'temperature fit found for {xs.species} in band '
+                                   f'{xs.wmin}-{xs.wmax}')
+                tfit_slope.append(tfit_match[0]['slope'])
+                tfit_intersect.append(tfit_match[0]['intersect'])
+                tfit_reftemp.append(tfit_match[0]['tref'])
+    else:
+        tfit_slope = None
+        tfit_intersect = None
+        tfit_reftemp = None
+
+
+
     if not len(xsec_ref):
         raise XsecError('No matching xsecs found.')
 
@@ -104,10 +135,14 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
     fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
     popt, pcov, decision = do_rms_fit(fwhm, pressure_diff)
     return XsecRecord(
-        xsec_ref[0].species.translate(str.maketrans(dict.fromkeys('-'))),
-        popt,
-        np.array([x.fmin for x in xsec_ref]),
-        np.array([x.fmax for x in xsec_ref]),
-        np.array([x.pressure for x in xsec_ref]),
-        np.array([x.temperature for x in xsec_ref]),
-        [x.data / 10000. for x in xsec_ref])
+        species=xsec_ref[0].species.translate(
+            str.maketrans(dict.fromkeys('-'))),
+        coeffs=popt,
+        fmin=np.array([x.fmin for x in xsec_ref]),
+        fmax=np.array([x.fmax for x in xsec_ref]),
+        refpressure=np.array([x.pressure for x in xsec_ref]),
+        reftemperature=np.array([x.temperature for x in xsec_ref]),
+        xsec=[x.data / 10000. for x in xsec_ref],
+        tfit_reftemp=tfit_reftemp,
+        tfit_slope=tfit_slope, tfit_intersect=tfit_intersect
+    )
