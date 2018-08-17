@@ -88,39 +88,9 @@ class XsecFile:
             data = np.hstack(
                 list(map(lambda l: list(map(float, l.split())), f.readlines())))
 
-        fields = header.split()
-        if len(fields) == 10:
-            fields_new = fields[:6]
-            fields_new.append(fields[6][:9])
-            fields_new.append(fields[6][9:])
-            fields_new.append(fields[7:])
-            fields = fields_new
-
-        fieldnames = {
-            'longname': str,
-            'fmin': float,
-            'fmax': float,
-            'nfreq': int,
-            'temperature': float,
-            'pressure': float,
-            'unknown1': str,
-            'unknown2': str,
-            'name': str,
-            'broadener': str,
-            'unknown3': int,
-        }
-        xsec_dict = {fname[0]: fname[1](
-            field) for fname, field in zip(fieldnames.items(), fields)}
         self._header = header
         self._data = data
-        # Recalculate number of frequency points based on actual data values
-        # since header information is not correct for some files
         self._nfreq = len(data)
-        xsec_dict['pressure'] = torr_to_pascal(xsec_dict['pressure'])
-        xsec_dict['fmin'] = wavenumber2frequency(xsec_dict['fmin'] * 100)
-        xsec_dict['fmax'] = wavenumber2frequency(xsec_dict['fmax'] * 100)
-
-        return xsec_dict
 
     @property
     def nfreq(self):
