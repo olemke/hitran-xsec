@@ -97,7 +97,7 @@ def combine_data_for_arts(species, args):
         cfc_file = os.path.join(args.output, s, 'cfc.xml')
         try:
             data = axml.load(cfc_file)
-        except:
+        except FileNotFoundError:
             logger.warning(f"No xml file found for species {s}, ignoring")
         else:
             all_species.append(data)
@@ -161,7 +161,7 @@ def rms_and_fitting(species, args):
             tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
             tfit_result = hx.xsec.load_rms_data(tfit_file)
             logger.info(f'Loaded temperature fit data for {species}')
-        except:
+        except FileNotFoundError:
             logger.info(f'No temperature fit data for {species}')
             tfit_result = None
 
