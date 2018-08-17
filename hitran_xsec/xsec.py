@@ -194,7 +194,8 @@ class XsecFileIndex:
             uniqfiles.append(item)
         nuniqfiles = len(uniqfiles)
         if nuniqfiles < nfiles:
-            logger.info(f'Removed {nfiles - nuniqfiles} duplicate data files.')
+            logger.info(f'Removed {nfiles - nuniqfiles} duplicate data files '
+                        f'for {self.files[0].species}')
             self.files = uniqfiles
 
     def find_file(self, filename):

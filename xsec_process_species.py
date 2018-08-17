@@ -53,7 +53,7 @@ def parse_args():
     # tfit command parser
     subparser = subparsers.add_parser('tfit',
                                       help='Analyze temperature behaviour.')
-    subparser.add_argument('-t', '--tref', type=int, default=0,
+    subparser.add_argument('-t', '--tref', type=int, default=-1,
                            help='Reference temperature.')
     subparser.set_defaults(command='tfit')
     subparser.set_defaults(execute=compare_different_temperatures)

@@ -228,7 +228,7 @@ def plot_temperatures_differences(tpressure, t0=None, fit=None, ax=None):
 
     ax.set_xlabel('Wavenumber [cm$^{-1}$]')
     ax.set_ylabel('Change [m$^2$]')
-    ax.legend()
+    ax.legend(fontsize='xx-small')
 
 
 def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
@@ -239,7 +239,13 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
     tfit = {}
     if len(tpressure) > 3:
         temps = np.array([i.temperature for i in tpressure])
-        t0 = tpressure[np.argmin(np.abs(temps - tref))]
+        if tref == -1:
+            t0 = tpressure[len(tpressure) // 2]
+            logger.info(f'Using {t0.temperature}K as reference temperature for '
+                        f'{t0.species} band {t0.wmin}-{t0.wmax} '
+                        f'@ {t0.pressure:.0f}Pa')
+        else:
+            t0 = tpressure[np.argmin(np.abs(temps - tref))]
         tfit['coeffs'] = do_temperture_fit(tpressure, t0)
         tfit['xsecs'] = tpressure
         fig, ax = plt.subplots()
@@ -269,7 +275,7 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
 
         fig, ax = plt.subplots()
         plot_temperatures_differences(tpressure, t0, fit=tfit['coeffs'], ax=ax)
-        ax.set_title(title)
+        ax.set_title(title + ' (fitted)')
         plotfile = os.path.join(
             output_dir,
             f'xsec_temperature_change_fit_'
@@ -285,10 +291,10 @@ def temperature_fit(xsec_by_pressure, output_dir, title=None, tref=230):
         ax.set_xlabel('Frequency [Hz]')
         ax.set_ylabel('Cross section [m$^2$]')
         ax.set_title(title)
-        ax.legend()
+        ax.legend(fontsize='xx-small')
         plotfile = os.path.join(
             output_dir,
-            f'xsec_temperature_spectrum'
+            f'xsec_temperature_spectrum_'
             f'{t0.wmin:.0f}-{t0.wmax:.0f}_'
             f'{t0.pressure:.0f}P.pdf')
         plt.savefig(plotfile)
