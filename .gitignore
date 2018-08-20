@@ -2,6 +2,7 @@
 *.pdf
 .*.swp
 .idea
+.ipynb_checkpoints
 __pycache__
 arts-example/*.rep
 arts-example/*.xml
