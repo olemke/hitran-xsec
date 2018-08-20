@@ -156,7 +156,8 @@ def plot_fit(ax, fwhm, pressure_diff, outliers=False):
     ax.xaxis.set_major_formatter(HectoPascalFormatter())
 
 
-def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
+def plot_fwhm_vs_pressure_difference(fwhm, pressure_diff, title=None, ax=None,
+                                     **kwargs):
     """Scatter plot of Lorentz filter FWHM vs pressure difference."""
     if kwargs is None:
         kwargs = {}
@@ -172,9 +173,8 @@ def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
         ax.set_title(title)
 
 
-def scatter_and_fit(xsecfileindex: XsecFileIndex, rmsoutput, species=None,
-                    outliers=False,
-                    ax=None):
+def scatter_plot_by_pressure_difference(xsecfileindex: XsecFileIndex, rmsoutput,
+                                        species=None, outliers=False, ax=None):
     """Scatter plot of the FWHM with the lowest RMS vs. pressure difference."""
     if not rmsoutput:
         raise RuntimeError('RMS output is empty')
@@ -193,9 +193,10 @@ def scatter_and_fit(xsecfileindex: XsecFileIndex, rmsoutput, species=None,
         if not len(rms):
             continue
         xsecs = rms
-        scatter_plot(*calc_fwhm_and_pressure_difference(xsecs), species, ax,
-                     s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
-                     label=f'{band[0]}-{band[1]}')
+        plot_fwhm_vs_pressure_difference(
+            *calc_fwhm_and_pressure_difference(xsecs), species, ax,
+            s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
+            label=f'{band[0]}-{band[1]}')
     plot_fit(ax, *calc_fwhm_and_pressure_difference(rmsoutput),
              outliers=outliers)
 
@@ -256,8 +257,8 @@ def scatter_plot_by_temperature(xsecfileindex: XsecFileIndex, rmsoutput,
     return ax
 
 
-def plot_temperatures_differences(tpressure: List[XsecFile], t0=None, fit=None,
-                                  ax=None):
+def plot_temperature_differences(tpressure: List[XsecFile], t0=None, fit=None,
+                                 ax=None):
     if ax is None:
         ax = plt.gca()
 
@@ -306,7 +307,7 @@ def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
         tfit['coeffs'] = do_temperture_fit(tpressure, t0)
         tfit['xsecs'] = tpressure
         fig, ax = plt.subplots()
-        plot_temperatures_differences(tpressure, t0, ax=ax)
+        plot_temperature_differences(tpressure, t0, ax=ax)
         ax.set_title(title)
         plotfile = os.path.join(
             output_dir,
@@ -331,7 +332,7 @@ def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
         logger.info(f'Wrote {plotfile}')
 
         fig, ax = plt.subplots()
-        plot_temperatures_differences(tpressure, t0, fit=tfit['coeffs'], ax=ax)
+        plot_temperature_differences(tpressure, t0, fit=tfit['coeffs'], ax=ax)
         ax.set_title(title + ' (fitted)')
         plotfile = os.path.join(
             output_dir,

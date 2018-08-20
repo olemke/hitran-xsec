@@ -177,7 +177,8 @@ def rms_and_fitting(species, args):
 
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
         plt.figure()
-        hx.plotting.scatter_and_fit(xfi, rms_result, outliers=False)
+        hx.plotting.scatter_plot_by_pressure_difference(xfi, rms_result,
+                                                        outliers=False)
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 
