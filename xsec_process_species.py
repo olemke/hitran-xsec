@@ -63,6 +63,11 @@ def parse_args():
                            help='Name of species to process. '
                                 'Pass "rfmip" for all RFMIP species.')
 
+    # average command parser
+    # TODO: Implement averaging command
+    subparser = subparsers.add_parser(
+        'avg', help='Calculate average coefficients from reference species.')
+
     # arts export command parser
     subparser = subparsers.add_parser('arts', help='Combine data for ARTS.')
     subparser.set_defaults(command='arts')
@@ -76,8 +81,9 @@ def parse_args():
 
 
 def prepare_data(directory, output_dir, species):
-    xfi = hx.XsecFileIndex(directory=directory, species=species,
-                           ignore='.*[^0-9._].*')
+    # Uses all available spectra. To only use those for air broadening, add
+    # keyword ignore='.*[^0-9._].*' below
+    xfi = hx.XsecFileIndex(directory=directory, species=species)
     if xfi.files:
         os.makedirs(output_dir, exist_ok=True)
     if xfi.ignored_files:
@@ -86,10 +92,11 @@ def prepare_data(directory, output_dir, species):
 
 
 def combine_data_for_arts(species, args):
-    active_species = {k: v for k, v in hx.XSEC_SPECIES_INFO.items()
-                      if k in species
-                      and (('active' in v and v[
-        'active']) or 'active' not in v)}
+    # FIXME: How to handle the active flag?
+    # active_species = {k: v for k, v in hx.XSEC_SPECIES_INFO.items()
+    #                   if k in species
+    #                   and (('active' in v and v[
+    #     'active']) or 'active' not in v)}
 
     combined_xml_file = os.path.join(args.output, 'cfc_combined.xml')
     all_species = []
