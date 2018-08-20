@@ -11,7 +11,6 @@ XSEC_SPECIES_INFO = {
     # Chlorocarbons and Hydrochlorocarbons
     'CCl4': {  # RFMIP Name: CARBON_TETRACHLORIDE
         'active': True,
-        'reference': True,
         'arts_bands': ((700, 860),),
     },
     #          +++++ fit ok +++++, use only band 700-860
@@ -22,12 +21,10 @@ XSEC_SPECIES_INFO = {
     # Chlorofluorocarbons (CFCs)
     'CFC-11': {  # +++++ fit ok +++++
         'active': True,
-        'reference': True,
     },
     'CFC11EQ': {},  # not in Hitran
     'CFC-12': {  # +++++ fit ok +++++
         'active': True,
-        'reference': True,
     },
     'CFC12EQ': {},  # not in Hitran
     'CFC-113': {  # only data for 0 torr
@@ -38,7 +35,7 @@ XSEC_SPECIES_INFO = {
 
     # Fully Fluorinated Species
     'C2F6': {
-        'arts_bands': ((680, 750), (1061, 1165), (1170, 1380),),
+        #'arts_bands': ((1061, 1165), (1170, 1380),),
     },  # !!!!! bad fit !!!!! no high pressure differences available
     'C3F8': {},  # no air broadening, only N2
     'C4F10': {},  # no air broadening, only N2
@@ -49,7 +46,6 @@ XSEC_SPECIES_INFO = {
     'c-C4F8': {},  # only data for 0 Torr
     'CF4': {  # +++++ fit ok +++++
         'active': True,
-        'reference': True,
     },
     'NF3': {},  # no air broadening, only N2
     'SO2F2': {},  # no air broadening, only N2
@@ -70,7 +66,6 @@ XSEC_SPECIES_INFO = {
         #            +++++ fit ok +++++. Use band 750-1600.
         'altname': 'CFH2CF3',
         'active': True,
-        'reference': True,
         'arts_bands': ((750, 1600),),
     },
     #             name, but without the 750-1600 band. This gives a better fit.
@@ -99,6 +94,13 @@ XSEC_SPECIES_INFO = {
 }
 
 SPECIES_GROUPS = {
+    'reference': [
+        'CCl4',
+        'CF4',
+        'CFC-11',
+        'CFC-12',
+        'HFC-134a',
+    ],
     'rfmip': [
         'c-C4F8',
         'C2Br2F4',
