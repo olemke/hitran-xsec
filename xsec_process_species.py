@@ -181,6 +181,12 @@ def rms_and_fitting(species, args):
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 
+        plotfile = os.path.join(output_dir, 'xsec_scatter_temp.pdf')
+        plt.figure()
+        hx.plotting.scatter_plot_by_temperature(xfi, rms_result)
+        plt.savefig(plotfile)
+        logger.info(f'Wrote {plotfile}')
+
         if args.rms_plots:
             for r in rms_result:
                 hx.plotting.generate_rms_and_spectrum_plots(

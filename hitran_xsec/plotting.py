@@ -11,7 +11,7 @@ from typhon.physics import frequency2wavenumber as f2w
 from typhon.plots import HectoPascalFormatter
 
 from .fit import (calc_fwhm_and_pressure_difference, func_2straights,
-                  do_rms_fit, do_temperture_fit)
+                  do_rms_fit, do_temperture_fit, get_fwhm_and_temperature)
 from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f, XsecFile,
                    XsecFileIndex)
 
@@ -175,7 +175,7 @@ def scatter_plot(fwhm, pressure_diff, title=None, ax=None, **kwargs):
 def scatter_and_fit(xsecfileindex: XsecFileIndex, rmsoutput, species=None,
                     outliers=False,
                     ax=None):
-    """Scatter plot of the FWHM with the lowest RMS."""
+    """Scatter plot of the FWHM with the lowest RMS vs. pressure difference."""
     if not rmsoutput:
         raise RuntimeError('RMS output is empty')
 
@@ -203,6 +203,55 @@ def scatter_and_fit(xsecfileindex: XsecFileIndex, rmsoutput, species=None,
 
     ax.set_xlim((0, 110000))
     ax.xaxis.set_major_formatter(HectoPascalFormatter())
+
+    return ax
+
+
+def plot_fwhm_vs_temperature(fwhm, temperature, title=None, ax=None, **kwargs):
+    """Scatter plot of Lorentz filter FWHM vs. temperature."""
+    if kwargs is None:
+        kwargs = {}
+
+    if ax is None:
+        ax = plt.gca()
+
+    ax.scatter(temperature, fwhm / 1e9, **kwargs)
+    ax.set_ylabel('FWHM of Lorentz filter [GHz]')
+    ax.set_xlabel('Temperature [K]')
+
+    if title is not None:
+        ax.set_title(title)
+
+
+def scatter_plot_by_temperature(xsecfileindex: XsecFileIndex, rmsoutput,
+                                species=None, ax=None):
+    """Scatter plot of the FWHM with the lowest RMS vs. temperature."""
+    if not rmsoutput:
+        raise RuntimeError('RMS output is empty')
+
+    if species is None:
+        species = xsecfileindex.files[0].species
+
+    if ax is None:
+        ax = plt.gca()
+
+    bands = [(b[0].wmin, b[0].wmax) for b in xsecfileindex.cluster_by_band()]
+    pressures = sorted(set(
+        p[0].pressure for b in xsecfileindex.cluster_by_band_and_pressure() for
+        p in b))
+    bands_n = len(bands)
+    for i, band in enumerate(bands):
+        for p in pressures:
+            xsecs = [x for x in rmsoutput if
+                     band[0] == x['wmin'] and band[1] == x['wmax'] and np.abs(
+                         p - x['target_pressure']) < 200]
+            if len(xsecs) >= 2:
+                plot_fwhm_vs_temperature(
+                    *get_fwhm_and_temperature(xsecs), species, ax,
+                    s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
+                    label=f'{band[0]}-{band[1]} @ {p:.0f}Pa')
+
+    ax.legend(fontsize='xx-small', loc=(1.01, 0))
 
     return ax
 

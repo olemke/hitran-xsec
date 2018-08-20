@@ -34,6 +34,14 @@ def calc_fwhm_and_pressure_difference(xsec_result):
     return fwhm, pressure_diff
 
 
+def get_fwhm_and_temperature(xsec_result):
+    fwhm = np.array([r['optimum_fwhm'] for r in xsec_result])
+    temperature = np.array(
+        [r['target_temp'] for r in xsec_result])
+
+    return fwhm, temperature
+
+
 def do_rms_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
     if outliers:
         data = np.hstack((pressure_diff.reshape(-1, 1), fwhm.reshape(-1, 1)))
