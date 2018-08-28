@@ -17,6 +17,7 @@ BOLD_SEQ = "\033[1m"
 FORMAT = (f"[{BOLD_SEQ}%(filename)s:%(lineno)s"
           f":{RESET_SEQ}{COLOR_SEQ}%(funcName)s{RESET_SEQ}] %(message)s")
 logging.basicConfig(format=FORMAT, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -98,10 +99,10 @@ def combine_data_for_arts(species, args):
     #                   and (('active' in v and v[
     #     'active']) or 'active' not in v)}
 
-    combined_xml_file = os.path.join(args.output, 'cfc_combined.xml')
+    combined_xml_file = os.path.join(args['output'], 'cfc_combined.xml')
     all_species = []
     for s in species:
-        cfc_file = os.path.join(args.output, s, 'cfc.xml')
+        cfc_file = os.path.join(args['output'], s, 'cfc.xml')
         try:
             data = axml.load(cfc_file)
         except FileNotFoundError:
@@ -115,14 +116,14 @@ def combine_data_for_arts(species, args):
 
 
 def compare_different_temperatures(species, args):
-    output_dir = os.path.join(args.output, species)
+    output_dir = os.path.join(args['output'], species)
 
-    xfi = prepare_data(args.directory, output_dir, species)
+    xfi = prepare_data(args['directory'], output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
 
-    tfit_result = hx.plotting.temperature_fit_multi(xfi, args.tref,
+    tfit_result = hx.plotting.temperature_fit_multi(xfi, args['tref'],
                                                     output_dir, species, 1)
     tfit_result = [x for x in tfit_result if x]
 
@@ -133,9 +134,9 @@ def compare_different_temperatures(species, args):
 
 
 def rms_and_fitting(species, args):
-    output_dir = os.path.join(args.output, species)
+    output_dir = os.path.join(args['output'], species)
 
-    xfi = prepare_data(args.directory, output_dir, species)
+    xfi = prepare_data(args['directory'], output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
@@ -148,7 +149,8 @@ def rms_and_fitting(species, args):
     logger.info(f'Wrote {plotfile}')
 
     rms_file = os.path.join(output_dir, 'xsec_rms.json')
-    if os.path.exists(rms_file) and not args.ignore_rms:
+    if os.path.exists(rms_file) and (
+            not 'ignore_rms' in args or not args['ignore_rms']):
         logger.info(f'Reading precalculated RMS values form {rms_file}.')
         rms_result = hx.xsec.load_rms_data(rms_file)
     else:
@@ -195,7 +197,7 @@ def rms_and_fitting(species, args):
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 
-        if args.rms_plots:
+        if 'rms_plots' in args and args['rms_plots']:
             for r in rms_result:
                 hx.plotting.generate_rms_and_spectrum_plots(
                     xfi, title=species, xsec_result=r, outdir=output_dir)
@@ -204,8 +206,6 @@ def rms_and_fitting(species, args):
 def main():
     typhon.plots.styles.use('typhon')
 
-    global logger
-    logger = logging.getLogger(__name__)
     args = parse_args()
 
     if args.style:
@@ -222,10 +222,10 @@ def main():
                                'Not found in XSEC_SPECIES_INFO.')
 
     if args.command == 'arts':
-        args.execute(species, args)
+        args.execute(species, vars(args))
     else:
         for s in species:
-            args.execute(s, args)
+            args.execute(s, vars(args))
 
     return 0
 
