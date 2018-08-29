@@ -125,9 +125,10 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
                                f'{xs.wmin}-{xs.wmax}')
             else:
                 if len(tfit_match) > 1:
-                    logger.warning(f'More than one ({len(tfit_match)}) matching '
-                                   f'temperature fit found for {xs.species} in band '
-                                   f'{xs.wmin}-{xs.wmax}')
+                    logger.warning(
+                        f'More than one ({len(tfit_match)}) matching '
+                        f'temperature fit found for {xs.species} in band '
+                        f'{xs.wmin}-{xs.wmax}')
                 tfit_slope.append(tfit_match[0]['slope'])
                 tfit_intersect.append(tfit_match[0]['intersect'])
                 tfit_reftemp.append(tfit_match[0]['tref'])
@@ -135,8 +136,6 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
         tfit_slope = None
         tfit_intersect = None
         tfit_reftemp = None
-
-
 
     if not len(xsec_ref):
         raise XsecError('No matching xsecs found.')
