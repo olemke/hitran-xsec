@@ -267,6 +267,18 @@ def xsec_convolve_simple(xsec1: XsecFile, hwhm, cutoff=None):
     return xsec_convolve_f(xsec1, hwhm, run_lorentz_f, cutoff)
 
 
+def xsec_convolve_simple_dict(xsec1: dict, hwhm, cutoff=None):
+    """Convolve cross section data with the given function."""
+    fstep = (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq']
+
+    conv_f = run_lorentz_f(int(xsec1['nfreq']), fstep, hwhm, cutoff=cutoff)
+    width = len(conv_f)
+    xsec_conv = deepcopy(xsec1)
+    xsec_conv['data'] = fftconvolve(xsec1['data'], conv_f, 'same')
+
+    return xsec_conv, conv_f, width
+
+
 def calc_xsec_rms(xsec1: XsecFile, xsec2: XsecFile):
     """Calculate RMS between two cross sections."""
     return np.sqrt(np.mean(np.square(

@@ -125,16 +125,28 @@ def plot_xsec(xsec: XsecFile, ax=None, **kwargs):
     if ax is None:
         ax = plt.gca()
 
-    fgrid = np.linspace(xsec.fmin, xsec.fmax, xsec.nfreq)
+    if isinstance(xsec, XsecFile):
+        pdata = {
+            'fmin': xsec.fmin,
+            'fmax': xsec.fmax,
+            'temperature': xsec.temperature,
+            'pressure': xsec.pressure,
+            'nfreq': len(xsec.data),
+            'data': xsec.data,
+        }
+    else:
+        pdata = xsec
+
+    fgrid = np.linspace(pdata['fmin'], pdata['fmax'], pdata['nfreq'])
 
     if kwargs is None:
         kwargs = {}
 
     if 'label' not in kwargs:
-        kwargs['label'] = (f"{xsec.temperature:.0f} K, "
-                           f"{xsec.pressure:.0f} Pa")
+        kwargs['label'] = (f"{pdata['temperature']:.0f} K, "
+                           f"{pdata['pressure']:.0f} Pa")
 
-    ax.plot(fgrid, xsec.data / 10000., **kwargs)  # Convert to m^2
+    ax.plot(fgrid, pdata['data'] / 10000., **kwargs)  # Convert to m^2
 
     return ax
 
