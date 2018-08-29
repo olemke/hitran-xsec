@@ -76,7 +76,7 @@ def do_temperture_fit(xsecs, xref=None):
     return fit[:, 0:2]
 
 
-def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
+def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
     if not rmsoutput:
         raise XsecError('RMS output is empty')
 
@@ -89,6 +89,9 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
 
     # Get list of temperatures in each band
     temps = [[t[0].temperature for t in b] for b in lbands]
+
+    if reftemp is None:
+        reftemp = tfitoutput[0]['tref']
 
     # Select profiles closest to reference temperature
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
@@ -112,7 +115,7 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
             tfit_match = [t for t in tfitoutput if
                           np.isclose(t['wmin'], xs.wmin)
                           and np.isclose(t['wmax'], xs.wmax)
-                          and np.isclose(t['pref'], xs.pressure)]
+                          and np.abs(t['pref'] - xs.pressure) < 100]
             if not len(tfit_match):
                 tfit_slope.append([0])
                 tfit_intersect.append([0])
@@ -151,6 +154,7 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=230):
         refpressure=np.array([x.pressure for x in xsec_ref]),
         reftemperature=np.array([x.temperature for x in xsec_ref]),
         xsec=[x.data / 10000. for x in xsec_ref],
-        tfit_reftemp=tfit_reftemp,
-        tfit_slope=tfit_slope, tfit_intersect=tfit_intersect
+        tfit_reftemp=np.array(tfit_reftemp),
+        tfit_slope=[np.array(x) for x in tfit_slope],
+        tfit_intersect=[np.array(x) for x in tfit_intersect],
     )
