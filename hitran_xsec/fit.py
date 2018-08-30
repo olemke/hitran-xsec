@@ -132,6 +132,8 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
                 tfit_slope.append(tfit_match[0]['slope'])
                 tfit_intersect.append(tfit_match[0]['intersect'])
                 tfit_reftemp.append(tfit_match[0]['tref'])
+                logger.info(f'Selected tfit @ {tfit_match[0]["pref"]:.0f} Pa '
+                            f'for band {xs.wmin}-{xs.wmin}')
     else:
         tfit_slope = None
         tfit_intersect = None
