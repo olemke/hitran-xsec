@@ -307,7 +307,12 @@ def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
                  t.nfreq == tpressure[0].nfreq]
 
     tfit = {}
-    if len(tpressure) > 3:
+    min_nt = 3
+    if len(tpressure) < min_nt:
+        logger.info(f'Not enough xsecs ({len(tpressure)} available for fit '
+                    f'@ {tpressure[0].pressure:.0f} Pa, '
+                    f'need at least {min_nt})')
+    else:
         temps = np.array([i.temperature for i in tpressure])
         if tref == -1:
             t0 = tpressure[len(tpressure) // 2]
