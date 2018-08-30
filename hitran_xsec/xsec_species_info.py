@@ -46,6 +46,7 @@ XSEC_SPECIES_INFO = {
     'c-C4F8': {},  # only data for 0 Torr
     'CF4': {  # +++++ fit ok +++++
         'active': True,
+        'arts_bands': ((1250, 1290),),
     },
     'NF3': {},  # no air broadening, only N2
     'SO2F2': {},  # no air broadening, only N2
