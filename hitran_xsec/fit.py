@@ -129,10 +129,11 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
                         f'More than one ({len(tfit_match)}) matching '
                         f'temperature fit found for {xs.species} in band '
                         f'{xs.wmin}-{xs.wmax}')
-                tfit_slope.append(tfit_match[0]['slope'])
-                tfit_intersect.append(tfit_match[0]['intersect'])
-                tfit_reftemp.append(tfit_match[0]['tref'])
-                logger.info(f'Selected tfit @ {tfit_match[0]["pref"]:.0f} Pa '
+                tfit_match = tfit_match[0]
+                tfit_slope.append(tfit_match['slope'])
+                tfit_intersect.append(tfit_match['intersect'])
+                tfit_reftemp.append(tfit_match['tref'])
+                logger.info(f'Selected tfit @ {tfit_match["pref"]:.0f} Pa '
                             f'for band {xs.wmin}-{xs.wmin}')
     else:
         tfit_slope = None
