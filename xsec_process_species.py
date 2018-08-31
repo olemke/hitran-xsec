@@ -68,7 +68,7 @@ def parse_args():
     subparser.add_argument('-r', '--rms-plots', action='store_true',
                            help='Generate cross section and rms plots.')
     subparser.set_defaults(command='rms')
-    subparser.set_defaults(execute=rms_and_fitting)
+    subparser.set_defaults(execute=calc_broadening)
 
     subparser.add_argument('species', metavar='SPECIES', nargs='+',
                            help='Name of species to process. '
@@ -80,7 +80,7 @@ def parse_args():
     subparser.add_argument('-t', '--tref', type=int, default=-1,
                            help='Reference temperature.')
     subparser.set_defaults(command='tfit')
-    subparser.set_defaults(execute=compare_different_temperatures)
+    subparser.set_defaults(execute=calc_temperature_correction)
 
     # Required commandline argument
     subparser.add_argument('species', metavar='SPECIES', nargs='+',
@@ -138,7 +138,7 @@ def combine_data_for_arts(species, outdir, **_):
     logger.info(f'Wrote {combined_xml_file}')
 
 
-def compare_different_temperatures(species, xscdir, outdir, tref=-1, **_):
+def calc_temperature_correction(species, xscdir, outdir, tref=-1, **_):
     output_dir = os.path.join(outdir, species)
 
     xfi = prepare_data(xscdir, output_dir, species)
@@ -156,7 +156,7 @@ def compare_different_temperatures(species, xscdir, outdir, tref=-1, **_):
         logger.info(f'Wrote {tfit_file}')
 
 
-def rms_and_fitting(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
+def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
                     **_):
     output_dir = os.path.join(outdir, species)
 
