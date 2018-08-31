@@ -371,8 +371,8 @@ def build_pairs_with_lowest_pressure(iterable: Iterable):
                 yield from ((xsec_no_p0[0], xsec2) for xsec2 in
                             itertools.islice(xsec_no_p0, 1, len(xsec_no_p0)))
             else:
-                logger.warning(f'Not enough xsecs for '
-                               f'temperature {xsec_list[0].temperature} in '
+                logger.warning(f'Not enough xsecs for {xsec_list[0].species} '
+                               f'at temperature {xsec_list[0].temperature} in '
                                f'band {xsec_list[0].wmin} - {xsec_list[0].wmax}'
                                )
 
