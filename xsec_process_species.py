@@ -10,13 +10,36 @@ import typhon.arts.xml as axml
 
 import hitran_xsec as hx
 
-BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
-RESET_SEQ = "\033[0m"
-COLOR_SEQ = "\033[1;%dm" % (30 + GREEN)
-BOLD_SEQ = "\033[1m"
-FORMAT = (f"[{BOLD_SEQ}%(filename)s:%(lineno)s"
-          f":{RESET_SEQ}{COLOR_SEQ}%(funcName)s{RESET_SEQ}] %(message)s")
-logging.basicConfig(format=FORMAT, level=logging.INFO)
+
+def set_default_logging_format(level=None, include_timestamp=False,
+                               include_function=True):
+    """Generate decently looking logging format string."""
+
+    if level is None:
+        level = logging.INFO
+
+    color = "\033[1;%dm"
+    reset = "\033[0m"
+    black, red, green, yellow, blue, magenta, cyan, white = [
+        color % (30 + i) for i in range(8)]
+    logformat = '['
+    if include_timestamp:
+        logformat += f'{red}%(asctime)s.%(msecs)03d{reset}:'
+    logformat += (f'{yellow}%(filename)s{reset}'
+                  f':{blue}%(lineno)s{reset}')
+    if include_function:
+        logformat += f':{green}%(funcName)s{reset}'
+    logformat += f'] %(message)s'
+
+    logging.basicConfig(
+        format=logformat,
+        level=level,
+        datefmt='%H:%M:%S')
+
+
+set_default_logging_format(level=logging.INFO,
+                           include_timestamp=True,
+                           include_function=True),
 logger = logging.getLogger(__name__)
 
 
