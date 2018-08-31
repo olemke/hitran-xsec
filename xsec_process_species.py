@@ -25,9 +25,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # Optional commandline arguments
-    parser.add_argument('-d', '--directory', default='.',
+    parser.add_argument('-d', '--xscdir', default='.',
                         help='Directory with HITRAN cross section data files.')
-    parser.add_argument('-o', '--output', metavar='OUTPUT_DIRECTORY',
+    parser.add_argument('-o', '--outdir', metavar='OUTPUT_DIRECTORY',
                         default='output',
                         help='Output directory. A subdirectory named SPECIES '
                              'will be created inside.')
@@ -92,17 +92,17 @@ def prepare_data(directory, output_dir, species):
     return xfi
 
 
-def combine_data_for_arts(species, args):
+def combine_data_for_arts(species, outdir, **_):
     # FIXME: How to handle the active flag?
     # active_species = {k: v for k, v in hx.XSEC_SPECIES_INFO.items()
     #                   if k in species
     #                   and (('active' in v and v[
     #     'active']) or 'active' not in v)}
 
-    combined_xml_file = os.path.join(args['output'], 'cfc_combined.xml')
+    combined_xml_file = os.path.join(outdir, 'cfc_combined.xml')
     all_species = []
     for s in species:
-        cfc_file = os.path.join(args['output'], s, 'cfc.xml')
+        cfc_file = os.path.join(outdir, s, 'cfc.xml')
         try:
             data = axml.load(cfc_file)
         except FileNotFoundError:
@@ -115,15 +115,15 @@ def combine_data_for_arts(species, args):
     logger.info(f'Wrote {combined_xml_file}')
 
 
-def compare_different_temperatures(species, args):
-    output_dir = os.path.join(args['output'], species)
+def compare_different_temperatures(species, xscdir, outdir, tref=-1, **_):
+    output_dir = os.path.join(outdir, species)
 
-    xfi = prepare_data(args['directory'], output_dir, species)
+    xfi = prepare_data(xscdir, output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
 
-    tfit_result = hx.plotting.temperature_fit_multi(xfi, args['tref'],
+    tfit_result = hx.plotting.temperature_fit_multi(xfi, tref,
                                                     output_dir, species, 1)
     tfit_result = [x for x in tfit_result if x]
 
@@ -133,10 +133,11 @@ def compare_different_temperatures(species, args):
         logger.info(f'Wrote {tfit_file}')
 
 
-def rms_and_fitting(species, args):
-    output_dir = os.path.join(args['output'], species)
+def rms_and_fitting(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
+                    **_):
+    output_dir = os.path.join(outdir, species)
 
-    xfi = prepare_data(args['directory'], output_dir, species)
+    xfi = prepare_data(xscdir, output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
@@ -149,8 +150,7 @@ def rms_and_fitting(species, args):
     logger.info(f'Wrote {plotfile}')
 
     rms_file = os.path.join(output_dir, 'xsec_rms.json')
-    if os.path.exists(rms_file) and (
-            not 'ignore_rms' in args or not args['ignore_rms']):
+    if os.path.exists(rms_file) and not ignore_rms:
         logger.info(f'Reading precalculated RMS values form {rms_file}.')
         rms_result = hx.xsec.load_rms_data(rms_file)
     else:
@@ -197,7 +197,7 @@ def rms_and_fitting(species, args):
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 
-        if 'rms_plots' in args and args['rms_plots']:
+        if rms_plots:
             for r in rms_result:
                 hx.plotting.generate_rms_and_spectrum_plots(
                     xfi, title=species, xsec_result=r, outdir=output_dir)
@@ -222,10 +222,11 @@ def main():
                                'Not found in XSEC_SPECIES_INFO.')
 
     if args.command == 'arts':
-        args.execute(species, vars(args))
+        args.execute(**vars(args))
     else:
         for s in species:
-            args.execute(s, vars(args))
+            args.species = s
+            args.execute(**vars(args))
 
     return 0
 
