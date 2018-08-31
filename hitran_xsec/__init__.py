@@ -3,7 +3,9 @@
 
 from . import fit
 from . import plotting
-from . import xsec_species_info
 from . import xsec
-from .xsec_species_info import XSEC_SPECIES_INFO, SPECIES_GROUPS
+from . import xsec_species_info
+from .calc import *
+from .logging import *
 from .xsec import *
+from .xsec_species_info import XSEC_SPECIES_INFO, SPECIES_GROUPS

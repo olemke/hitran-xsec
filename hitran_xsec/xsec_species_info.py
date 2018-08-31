@@ -35,7 +35,7 @@ XSEC_SPECIES_INFO = {
 
     # Fully Fluorinated Species
     'C2F6': {
-        #'arts_bands': ((1061, 1165), (1170, 1380),),
+        # 'arts_bands': ((1061, 1165), (1170, 1380),),
     },  # !!!!! bad fit !!!!! no high pressure differences available
     'C3F8': {},  # no air broadening, only N2
     'C4F10': {},  # no air broadening, only N2
