@@ -316,7 +316,8 @@ def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
         temps = np.array([i.temperature for i in tpressure])
         if tref == -1:
             t0 = tpressure[len(tpressure) // 2]
-            logger.info(f'Using {t0.temperature}K as reference temperature for '
+            logger.info(f'Using {len(tpressure)} xsecs at {t0.temperature}K as '
+                        f'reference temperature for '
                         f'{t0.species} band {t0.wmin}-{t0.wmax} '
                         f'@ {t0.pressure:.0f}Pa')
         else:
