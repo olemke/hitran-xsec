@@ -156,7 +156,6 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
         refpressure=np.array([x.pressure for x in xsec_ref]),
         reftemperature=np.array([x.temperature for x in xsec_ref]),
         xsec=[x.data / 10000. for x in xsec_ref],
-        tfit_reftemp=np.array(tfit_reftemp),
         tfit_slope=[np.array(x) for x in tfit_slope],
         tfit_intersect=[np.array(x) for x in tfit_intersect],
     )
