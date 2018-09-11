@@ -95,6 +95,7 @@ def main():
                                'Not found in XSEC_SPECIES_INFO.')
 
     if args.command == 'arts':
+        args.species = species
         args.execute(**vars(args))
     else:
         for s in species:
