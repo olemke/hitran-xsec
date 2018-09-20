@@ -1,10 +1,11 @@
 """High-level functions for cross section data processing"""
 
-import itertools
 import logging
 import os
 
+import itertools
 import matplotlib.pyplot as plt
+import numpy as np
 import typhon.arts.xml as axml
 
 from .fit import gen_arts
@@ -70,13 +71,19 @@ def calc_temperature_correction(species, xscdir, outdir, tref=-1, **_):
 
 
 def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
-                    **_):
+                    averaged=False, **_):
     output_dir = os.path.join(outdir, species)
 
     xfi = prepare_data(xscdir, output_dir, species)
     if not xfi.files:
         logger.warning(f'No input files found for {species}.')
         return
+
+    averaged_coeffs_xml_file = os.path.join(outdir, 'cfc_averaged_coeffs.xml')
+    if os.path.exists(averaged_coeffs_xml_file):
+        avg_coeffs = axml.load(averaged_coeffs_xml_file)
+    else:
+        avg_coeffs = None
 
     # Scatter plot of available cross section data files
     plotfile = os.path.join(output_dir, 'xsec_datasets.pdf')
@@ -86,10 +93,11 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
     logger.info(f'Wrote {plotfile}')
 
     rms_file = os.path.join(output_dir, 'xsec_rms.json')
+    rms_result = None
     if os.path.exists(rms_file) and not ignore_rms:
         logger.info(f'Reading precalculated RMS values form {rms_file}.')
         rms_result = load_rms_data(rms_file)
-    else:
+    elif not averaged:
         rms_result = [x for x in optimize_xsec_multi(xfi) if x]
         if rms_result:
             save_rms_data(rms_file, rms_result)
@@ -99,27 +107,33 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
 
     # Plot of best FWHM vs. pressure difference and the fit
     if rms_result:
-        xml_file = os.path.join(output_dir, 'cfc.xml')
+        if rms_plots:
+            for r in rms_result:
+                generate_rms_and_spectrum_plots(
+                    xfi, title=species, xsec_result=r, outdir=output_dir)
 
-        # Load temperature fit if available
-        try:
-            tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
-            tfit_result = load_rms_data(tfit_file)
-            logger.info(f'Loaded temperature fit data for {species}')
-        except FileNotFoundError:
-            logger.info(f'No temperature fit data for {species}')
-            tfit_result = None
+    # Load temperature fit if available
+    try:
+        tfit_file = os.path.join(output_dir, 'xsec_tfit.json')
+        tfit_result = load_rms_data(tfit_file)
+        logger.info(f'Loaded temperature fit data for {species}')
+    except FileNotFoundError:
+        logger.info(f'No temperature fit data for {species}')
+        tfit_result = None
 
-        xsec_records = (gen_arts(xfi, rms_result, tfit_result),)
-        axml.save(xsec_records, xml_file)
-        logger.info(f'Wrote {xml_file}')
+    xsec_records = (
+        gen_arts(xfi, rms_result, tfit_result, averaged_coeffs=avg_coeffs),)
+    xml_file = os.path.join(output_dir, 'cfc.xml')
+    axml.save(xsec_records, xml_file)
+    logger.info(f'Wrote {xml_file}')
 
-        plotfile = os.path.join(output_dir, 'xsec_bands.pdf')
-        plt.figure()
-        plot_xsec_records(xsec_records)
-        plt.savefig(plotfile)
-        logger.info(f'Wrote {plotfile}')
+    plotfile = os.path.join(output_dir, 'xsec_bands.pdf')
+    plt.figure()
+    plot_xsec_records(xsec_records)
+    plt.savefig(plotfile)
+    logger.info(f'Wrote {plotfile}')
 
+    if rms_result:
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
         plt.figure()
         scatter_plot_by_pressure_difference(xfi, rms_result,
@@ -133,7 +147,26 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 
-        if rms_plots:
-            for r in rms_result:
-                generate_rms_and_spectrum_plots(
-                    xfi, title=species, xsec_result=r, outdir=output_dir)
+
+def calc_average_coeffs(species, xscdir, outdir, **_):
+    """Calculate averaged coefficients"""
+    averaged_coeffs_xml_file = os.path.join(outdir, 'cfc_averaged_coeffs.xml')
+    averaged_species_xml_file = os.path.join(outdir, 'cfc_averaged_species.xml')
+    all_species = []
+    for s in species:
+        cfc_file = os.path.join(outdir, s, 'cfc.xml')
+        try:
+            data = axml.load(cfc_file)
+        except FileNotFoundError:
+            logger.warning(f"No xml file found for species {s}, ignoring")
+        else:
+            all_species.append(data)
+            logger.info(f'Added {s}')
+
+    avg_coeffs = np.sum(
+        [x[0].coeffs for x in all_species], axis=0) / len(all_species)
+    avg_species = [x[0].species for x in all_species]
+    axml.save(avg_coeffs, averaged_coeffs_xml_file)
+    logger.info(f'Wrote {averaged_coeffs_xml_file}')
+    axml.save(avg_species, averaged_species_xml_file)
+    logger.info(f'Wrote {averaged_species_xml_file}')

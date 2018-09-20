@@ -76,9 +76,12 @@ def do_temperture_fit(xsecs, xref=None):
     return fit[:, 0:2]
 
 
-def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
-    if not rmsoutput:
-        raise XsecError('RMS output is empty')
+def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
+             averaged_coeffs=None):
+    if not rmsoutput and (
+            not isinstance(averaged_coeffs, np.ndarray) or not len(
+            averaged_coeffs)):
+        raise XsecError('No RMS output and no averaged coefficients available.')
 
     # Find reference profiles for each band
     bands = xsecfileindex.cluster_by_band_and_temperature()
@@ -145,8 +148,11 @@ def gen_arts(xsecfileindex, rmsoutput, tfitoutput=None, reftemp=None):
 
     logger.info(f'{len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
-    fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
-    popt, pcov, decision = do_rms_fit(fwhm, pressure_diff)
+    if rmsoutput:
+        fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
+        popt, _, _ = do_rms_fit(fwhm, pressure_diff)
+    else:
+        popt = averaged_coeffs
     return XsecRecord(
         species=xsec_ref[0].species.translate(
             str.maketrans(dict.fromkeys('-'))),

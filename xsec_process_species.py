@@ -1,13 +1,14 @@
 import argparse
 import logging
-import sys
 
 import matplotlib.pyplot as plt
+import sys
 import typhon
 
 from hitran_xsec import (calc_broadening, calc_temperature_correction,
-                         combine_data_for_arts, SPECIES_GROUPS,
-                         XSEC_SPECIES_INFO, set_default_logging_format)
+                         combine_data_for_arts, calc_average_coeffs,
+                         SPECIES_GROUPS, XSEC_SPECIES_INFO,
+                         set_default_logging_format)
 
 set_default_logging_format(level=logging.INFO,
                            include_timestamp=True,
@@ -39,6 +40,8 @@ def parse_args():
                            help='Ignore existing RMS file (recalculate).')
     subparser.add_argument('-r', '--rms-plots', action='store_true',
                            help='Generate cross section and rms plots.')
+    subparser.add_argument('-a', '--averaged', action='store_true',
+                           help='Force use of averaged coefficients.')
     subparser.set_defaults(command='rms')
     subparser.set_defaults(execute=calc_broadening)
 
@@ -63,6 +66,13 @@ def parse_args():
     # TODO: Implement averaging command
     subparser = subparsers.add_parser(
         'avg', help='Calculate average coefficients from reference species.')
+    subparser.set_defaults(command='average')
+    subparser.set_defaults(execute=calc_average_coeffs)
+
+    # Required commandline argument
+    subparser.add_argument('species', metavar='SPECIES', nargs='+',
+                           help='Name of species to process. '
+                                'Pass "reference" for all default species.')
 
     # arts export command parser
     subparser = subparsers.add_parser('arts', help='Combine data for ARTS.')
@@ -94,7 +104,7 @@ def main():
             raise RuntimeError(f'Unknown xsec species {s}. '
                                'Not found in XSEC_SPECIES_INFO.')
 
-    if args.command == 'arts':
+    if args.command in ('arts', 'average'):
         args.species = species
         args.execute(**vars(args))
     else:
