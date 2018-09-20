@@ -100,7 +100,7 @@ SPECIES_GROUPS = {
         'CF4',
         'CFC-11',
         'CFC-12',
-        'HFC-134a',
+        #'HFC-134a',
     ],
     'rfmip': [
         'c-C4F8',
