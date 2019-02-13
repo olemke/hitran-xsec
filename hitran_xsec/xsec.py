@@ -15,16 +15,6 @@ from typhon.physics import wavenumber2frequency
 
 from .xsec_species_info import XSEC_SPECIES_INFO
 
-__all__ = [
-    'XsecError',
-    'XsecFile',
-    'XsecFileIndex',
-    'load_rms_data',
-    'optimize_xsec',
-    'optimize_xsec_multi',
-    'save_rms_data',
-]
-
 logger = logging.getLogger(__name__)
 
 LORENTZ_CUTOFF = None
@@ -324,7 +314,7 @@ def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
         if width < 10:
             logger.warning(
                 f"Very few ({width}) points used in Lorentz function for "
-                f"{xsec_name} at FWHM {fwhm/1e9:.2} GHz.")
+                f"{xsec_name} at FWHM {fwhm / 1e9:.2} GHz.")
 
         xsec_high_interp = deepcopy(xsec_conv)
         xsec_high_interp.data = np.interp(fgrid_conv, fgrid_high,
