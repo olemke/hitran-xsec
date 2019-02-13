@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_rms_parser_args(subparsers):
-    # RMS command parser
+    """RMS command parser"""
     subparser = subparsers.add_parser('rms',
                                       help='Calculate rms and perform fitting.')
     subparser.add_argument('-i', '--ignore-rms', action='store_true',
@@ -35,7 +35,7 @@ def add_rms_parser_args(subparsers):
 
 
 def add_tfit_parser_args(subparsers):
-    # tfit command parser
+    """tfit command parser"""
     subparser = subparsers.add_parser('tfit',
                                       help='Analyze temperature behaviour.')
     subparser.add_argument('-t', '--tref', type=int, default=-1,
@@ -50,7 +50,7 @@ def add_tfit_parser_args(subparsers):
 
 
 def add_average_parser_args(subparsers):
-    # average command parser
+    """Average command parser"""
     # TODO: Implement averaging command
     subparser = subparsers.add_parser(
         'avg', help='Calculate average coefficients from reference species.')
@@ -64,7 +64,7 @@ def add_average_parser_args(subparsers):
 
 
 def add_arts_parser_args(subparsers):
-    # arts export command parser
+    """ARTS export command parser"""
     subparser = subparsers.add_parser('arts', help='Combine data for ARTS.')
     subparser.set_defaults(command='arts')
     subparser.set_defaults(execute=combine_data_for_arts)
