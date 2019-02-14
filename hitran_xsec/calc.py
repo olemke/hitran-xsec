@@ -13,7 +13,7 @@ from .plotting import (temperature_fit_multi, plot_available_xsecs,
                        plot_xsec_records, scatter_plot_by_pressure_difference,
                        scatter_plot_by_temperature,
                        generate_rms_and_spectrum_plots)
-from .xsec import (XsecFileIndex, save_rms_data, load_rms_data,
+from .xsec import (XsecFileIndex, XsecError, save_rms_data, load_rms_data,
                    optimize_xsec_multi)
 
 logger = logging.getLogger(__name__)
@@ -121,8 +121,13 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
         logger.info(f'No temperature fit data for {species}')
         tfit_result = None
 
-    xsec_records = (
-        gen_arts(xfi, rms_result, tfit_result, averaged_coeffs=avg_coeffs),)
+    try:
+        xsec_records = (
+            gen_arts(xfi, rms_result, tfit_result, averaged_coeffs=avg_coeffs),)
+    except XsecError:
+        logger.warning(f'No RMS calculation possible for {species}')
+        return
+
     xml_file = os.path.join(output_dir, 'cfc.xml')
     axml.save(xsec_records, xml_file)
     logger.info(f'Wrote {xml_file}')
