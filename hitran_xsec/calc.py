@@ -1,18 +1,18 @@
 """High-level functions for cross section data processing"""
 
+import itertools
 import logging
 import os
 
-import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 import typhon.arts.xml as axml
 
 from .fit import gen_arts
-from .plotting import (temperature_fit_multi, plot_available_xsecs,
+from .plotting import (plot_available_xsecs,
                        plot_xsec_records, scatter_plot_by_pressure_difference,
                        scatter_plot_by_temperature,
-                       generate_rms_and_spectrum_plots)
+                       generate_rms_and_spectrum_plots, temperature_fit)
 from .xsec import (XsecFileIndex, XsecError, save_rms_data, load_rms_data,
                    optimize_xsec_multi)
 
@@ -61,7 +61,9 @@ def calc_temperature_correction(species, xscdir, outdir, tref=-1, **_):
         logger.warning(f'No input files found for {species}.')
         return
 
-    tfit_result = temperature_fit_multi(xfi, tref, output_dir, species, 1)
+    bands = xfi.cluster_by_band_and_pressure()
+    tfit_result = [temperature_fit(x, output_dir, species, tref)
+                   for band in bands for x in band]
     tfit_result = [x for x in tfit_result if x]
 
     tfit_file = os.path.join(output_dir, 'xsec_tfit.json')

@@ -1,5 +1,6 @@
 import argparse
 import logging
+import multiprocessing as mp
 import sys
 
 import matplotlib.pyplot as plt
@@ -125,6 +126,11 @@ def main():
     if args.command in ('arts', 'average'):
         args.species = species
         args.execute(**vars(args))
+    elif args.command in ('tfit'):
+        with mp.Pool(processes=xsec_config.nprocesses) as pool:
+            pool.starmap(calc_temperature_correction,
+                         ((s, args.xscdir, args.outdir, args.tref)
+                          for s in species))
     else:
         for s in species:
             args.species = s
