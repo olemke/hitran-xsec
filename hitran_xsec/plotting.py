@@ -13,7 +13,7 @@ from typhon.plots import HectoPascalFormatter
 from .fit import (calc_fwhm_and_pressure_difference, func_2straights,
                   do_rms_fit, do_temperture_fit, get_fwhm_and_temperature)
 from .xsec import (LORENTZ_CUTOFF, xsec_convolve_f, run_lorentz_f, XsecFile,
-                   XsecFileIndex)
+                   XsecFileIndex, xsec_config)
 
 logger = logging.getLogger(__name__)
 
@@ -390,6 +390,8 @@ def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None,
 def temperature_fit_multi(xsecfileindex: XsecFileIndex, tref, output_dir, title,
                           processes=None):
     """Calculate best broadening width."""
+    if not processes:
+        processes = xsec_config.nprocesses
     bands = xsecfileindex.cluster_by_band_and_pressure()
     with mp.Pool(processes=processes) as pool:
         return pool.starmap(temperature_fit,

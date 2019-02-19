@@ -20,6 +20,19 @@ logger = logging.getLogger(__name__)
 LORENTZ_CUTOFF = None
 
 
+class XsecConfig:
+    def __init__(self):
+        self._nprocesses = None
+
+    @property
+    def nprocesses(self):
+        return self._nprocesses
+
+    @nprocesses.setter
+    def nprocesses(self, n):
+        self._nprocesses = n
+
+
 class XsecError(RuntimeError):
     """Cross section related RuntimeError."""
     pass
@@ -369,6 +382,13 @@ def build_pairs_with_lowest_pressure(iterable: Iterable):
 
 def optimize_xsec_multi(xsecfileindex: XsecFileIndex, processes=None):
     """Calculate best broadening width."""
+    if not processes:
+        processes = xsec_config.nprocesses
+
+    if processes:
+        logger.info(f"Using {processes} processes.")
+    else:
+        logger.info(f"Using all cores.")
     bands = xsecfileindex.cluster_by_band_and_temperature()
     pressure_pairs = build_pairs_with_lowest_pressure(bands)
     with mp.Pool(processes=processes) as pool:
@@ -386,3 +406,6 @@ def load_rms_data(filename):
     with open(filename) as f:
         results = json.load(f)
     return results
+
+
+xsec_config = XsecConfig()

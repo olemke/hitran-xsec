@@ -7,7 +7,7 @@ import typhon
 
 from hitran_xsec import (calc_broadening, calc_temperature_correction,
                          combine_data_for_arts, calc_average_coeffs,
-                         SPECIES_GROUPS, XSEC_SPECIES_INFO,
+                         SPECIES_GROUPS, XSEC_SPECIES_INFO, xsec_config,
                          set_default_logging_format)
 
 set_default_logging_format(level=logging.INFO,
@@ -85,6 +85,8 @@ def parse_args():
                         default='output',
                         help='Output directory. A subdirectory named SPECIES '
                              'will be created inside.')
+    parser.add_argument('-p', '--processes', type=int,
+                        help='Maximum number of processes.')
     parser.add_argument('-s', '--style', type=str, default=None,
                         help='Custom matplotlib style name.')
 
@@ -107,6 +109,8 @@ def main():
 
     if args.style:
         plt.style.use(args.style)
+
+    xsec_config.nprocesses = args.processes
 
     species = []
     for s in args.species:
