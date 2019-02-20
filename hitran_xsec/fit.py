@@ -80,7 +80,7 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
              averaged_coeffs=None):
     if not rmsoutput and (
             not isinstance(averaged_coeffs, np.ndarray) or not len(
-            averaged_coeffs)):
+        averaged_coeffs)):
         raise XsecError('No RMS output and no averaged coefficients available.')
 
     # Find reference profiles for each band
@@ -94,13 +94,17 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
     temps = [[t[0].temperature for t in b] for b in lbands]
 
     if reftemp is None:
-        reftemp = tfitoutput[0]['tref']
+        if tfitoutput:
+            reftemp = tfitoutput[0]['tref']
+        else:
+            reftemp = 240
 
     # Select profiles closest to reference temperature
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
             temps]
 
-    species = XSEC_SPECIES_INFO[lbands[0][0][0].species]
+    species_name = lbands[0][0][0].species
+    species = XSEC_SPECIES_INFO[species_name]
     if 'arts_bands' in species:
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins) if
                     (band[index][0].wmin, band[index][0].wmax) in
@@ -138,10 +142,11 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
                 tfit_reftemp.append(tfit_match['tref'])
                 logger.info(f'Selected tfit @ {tfit_match["pref"]:.0f} Pa '
                             f'for band {xs.wmin}-{xs.wmin}')
+        tfit_slope = [np.array(x) for x in tfit_slope]
+        tfit_intersect = [np.array(x) for x in tfit_intersect]
     else:
-        tfit_slope = None
-        tfit_intersect = None
-        tfit_reftemp = None
+        tfit_slope = [0.]
+        tfit_intersect = [0.]
 
     if not len(xsec_ref):
         raise XsecError('No matching xsecs found.')
@@ -152,6 +157,7 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
         popt, _, _ = do_rms_fit(fwhm, pressure_diff)
     else:
+        logger.info(f'Using averaged coefficients for {species_name}')
         popt = averaged_coeffs
     return XsecRecord(
         species=xsec_ref[0].species.translate(
@@ -162,6 +168,6 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
         refpressure=np.array([x.pressure for x in xsec_ref]),
         reftemperature=np.array([x.temperature for x in xsec_ref]),
         xsec=[x.data / 10000. for x in xsec_ref],
-        tfit_slope=[np.array(x) for x in tfit_slope],
-        tfit_intersect=[np.array(x) for x in tfit_intersect],
+        tfit_slope=tfit_slope,
+        tfit_intersect=tfit_intersect,
     )
