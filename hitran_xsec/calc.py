@@ -155,7 +155,7 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
         logger.info(f'Wrote {plotfile}')
 
 
-def calc_average_coeffs(species, xscdir, outdir, **_):
+def calc_average_coeffs(species, outdir, **_):
     """Calculate averaged coefficients"""
     averaged_coeffs_xml_file = os.path.join(outdir, 'cfc_averaged_coeffs.xml')
     averaged_species_xml_file = os.path.join(outdir, 'cfc_averaged_species.xml')
