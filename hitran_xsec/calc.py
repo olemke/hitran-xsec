@@ -10,7 +10,8 @@ import typhon.arts.xml as axml
 
 from .fit import gen_arts
 from .plotting import (plot_available_xsecs,
-                       plot_xsec_records, scatter_plot_by_pressure_difference,
+                       plot_xsec_records,
+                       scatter_plot_by_pressure_difference_per_band,
                        scatter_plot_by_temperature,
                        generate_rms_and_spectrum_plots, temperature_fit)
 from .xsec import (XsecFileIndex, XsecError, save_rms_data, load_rms_data,
@@ -108,11 +109,10 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
             logger.warning(f'No results for {species}')
 
     # Plot of best FWHM vs. pressure difference and the fit
-    if rms_result:
-        if rms_plots:
-            for r in rms_result:
-                generate_rms_and_spectrum_plots(
-                    xfi, title=species, xsec_result=r, outdir=output_dir)
+    if rms_result and rms_plots:
+        for r in rms_result:
+            generate_rms_and_spectrum_plots(
+                xfi, title=species, xsec_result=r, outdir=output_dir)
 
     # Load temperature fit if available
     try:
@@ -143,8 +143,8 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
     if rms_result:
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
         plt.figure()
-        scatter_plot_by_pressure_difference(xfi, rms_result,
-                                            outliers=False)
+        scatter_plot_by_pressure_difference_per_band(xfi, rms_result,
+                                                     outliers=False)
         plt.savefig(plotfile)
         logger.info(f'Wrote {plotfile}')
 

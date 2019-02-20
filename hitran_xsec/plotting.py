@@ -185,8 +185,10 @@ def plot_fwhm_vs_pressure_difference(fwhm, pressure_diff, title=None, ax=None,
         ax.set_title(title)
 
 
-def scatter_plot_by_pressure_difference(xsecfileindex: XsecFileIndex, rmsoutput,
-                                        species=None, outliers=False, ax=None):
+def scatter_plot_by_pressure_difference_per_band(xsecfileindex: XsecFileIndex,
+                                                 rmsoutput,
+                                                 species=None, outliers=False,
+                                                 ax=None):
     """Scatter plot of the FWHM with the lowest RMS vs. pressure difference."""
     if not rmsoutput:
         raise RuntimeError('RMS output is empty')
