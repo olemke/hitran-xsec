@@ -27,6 +27,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'ch3ccl3_GM',
     },
     'CHCl3': {  # not available in Hitran
+        'arts_bands': ((580, 7200),),
         'rfmip': 'chcl3_GM',
     },
 
@@ -52,7 +53,8 @@ XSEC_SPECIES_INFO = {
 
     # Fully Fluorinated Species
     'C2F6': {  # !!!!! bad fit !!!!! no high pressure differences available
-        # 'arts_bands': ((1061, 1165), (1170, 1380),),
+        'use_average': True,
+        'arts_bands': ((500, 6500),),
         'rfmip': 'c2f6_GM',
     },
     'C3F8': {  # no air broadening, only N2
@@ -62,6 +64,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'c4f10_GM',
     },
     'n-C5F12': {  # no air broadening, only N2
+        'arts_bands': ((500, 6500),),
         'rfmip': 'c5f12_GM',
     },
     'n-C6F14': {  # no air broadening, only N2
@@ -71,6 +74,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'c8f18_GM',
     },
     'c-C4F8': {  # only data for 0 Torr
+        'arts_bands': ((550, 6500),),
         'rfmip': 'c_c4f8_GM',
     },
     'CF4': {  # +++++ fit ok +++++
@@ -82,6 +86,8 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'nf3_GM',
     },
     'SF6': {
+        'use_average': True,
+        'arts_bands': ((560, 6500),),
         'rfmip': 'sf6_GM',
     },
     'SO2F2': {  # no air broadening, only N2
@@ -97,15 +103,19 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'hcfc141b_GM',
     },
     'HCFC-142b': {  # only data for 0 torr
+        'arts_bands': ((650, 1500),),
         'rfmip': 'hcfc142b_GM',
     },
     'HCFC-22': {  # !!!!! bad fit !!!!! no high pressure differences available
+        'use_average': True,
         'arts_bands': ((760, 860), (1060, 1210), (1275, 1380),),
         'rfmip': 'hcfc22_GM',
     },
 
     # Hydrofluorocarbons (HFCs)
     'HFC-125': {
+        'use_average': True,
+        'arts_bands': ((495, 1504),),
         'rfmip': 'hfc125_GM',
     },
     'HFC-134a': {  # +++++ fit ok +++++. Use band 750-1600.
@@ -115,6 +125,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'hfc134a_GM',
     },
     'HFC-143a': {  # not enough xsecs available
+        'use_average': True,
         'arts_bands': ((580, 630), (694, 1504),),
         'rfmip': 'hfc143a_GM',
     },
@@ -122,6 +133,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'hfc152a_GM',
     },
     'CF3CHFCF3': {
+        'arts_bands': ((500, 6500),),  # Check first band for overlap
         'rfmip': 'hfc227ea_GM',
     },
     'CF3CH2CF3': {
@@ -134,6 +146,7 @@ XSEC_SPECIES_INFO = {
         'rfmip': 'hfc245fa_GM',
     },
     'HFC-32': {  # !!!!! bad fit !!!!! not enough xsecs available
+        'use_average': True,
         'rfmip': 'hfc32_GM',
     },
     'CH3CF2CH2CF3': {  # Only one profile
@@ -162,7 +175,7 @@ SPECIES_GROUPS = {
         'CF4',
         'CFC-11',
         'CFC-12',
-        #  'HFC-134a',
+        'HFC-134a',
     ],
     'rfmip-names': [
         'c2f6_GM',

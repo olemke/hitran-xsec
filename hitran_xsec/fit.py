@@ -6,8 +6,7 @@ from scipy.optimize import curve_fit
 from scipy.stats import linregress
 from typhon.arts.xsec import XsecRecord
 
-from .xsec import XsecError
-from .xsec_species_info import XSEC_SPECIES_INFO
+from .xsec import (XsecError, XSEC_SPECIES_INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +78,8 @@ def do_temperture_fit(xsecs, xref=None):
 def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
              averaged_coeffs=None):
     if not rmsoutput and (
-            not isinstance(averaged_coeffs, np.ndarray) or not len(
-        averaged_coeffs)):
+            not isinstance(averaged_coeffs, np.ndarray)
+            or not len(averaged_coeffs)):
         raise XsecError('No RMS output and no averaged coefficients available.')
 
     # Find reference profiles for each band
@@ -153,12 +152,13 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
 
     logger.info(f'{len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
-    if rmsoutput:
-        fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
-        popt, _, _ = do_rms_fit(fwhm, pressure_diff)
-    else:
+    if not rmsoutput or ('use_average' in XSEC_SPECIES_INFO[species_name]
+                         and XSEC_SPECIES_INFO[species_name]['use_average']):
         logger.info(f'Using averaged coefficients for {species_name}')
         popt = averaged_coeffs
+    else:
+        fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
+        popt, _, _ = do_rms_fit(fwhm, pressure_diff)
     return XsecRecord(
         species=xsec_ref[0].species.translate(
             str.maketrans(dict.fromkeys('-'))),
