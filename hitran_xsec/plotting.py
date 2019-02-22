@@ -222,6 +222,29 @@ def scatter_plot_by_pressure_difference_per_band(xsecfileindex: XsecFileIndex,
     return ax
 
 
+def scatter_plot_by_pressure_difference(rmsoutput,
+                                        species="unkown", outliers=False,
+                                        ax=None):
+    """Scatter plot of the FWHM with the lowest RMS vs. pressure difference."""
+    if not rmsoutput:
+        raise RuntimeError('RMS output is empty')
+
+    if ax is None:
+        ax = plt.gca()
+
+    fwhm_pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
+    plot_fwhm_vs_pressure_difference(*fwhm_pressure_diff, species, ax, s=20)
+
+    plot_fit(ax, *fwhm_pressure_diff, outliers=outliers)
+
+    ax.legend(fontsize='xx-small')
+
+    ax.set_xlim((0, 110000))
+    ax.xaxis.set_major_formatter(HectoPascalFormatter())
+
+    return ax
+
+
 def plot_fwhm_vs_temperature(fwhm, temperature, title=None, ax=None, **kwargs):
     """Scatter plot of Lorentz filter FWHM vs. temperature."""
     if kwargs is None:
