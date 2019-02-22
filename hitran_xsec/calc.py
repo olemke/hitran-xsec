@@ -50,7 +50,8 @@ def combine_data_for_arts(species, outdir, **_):
             all_species.append(data)
             logger.info(f'Added {s}')
 
-    axml.save(list(itertools.chain(*all_species)), combined_xml_file)
+    axml.save(list(itertools.chain(*all_species)), combined_xml_file,
+              format='binary')
     logger.info(f'Wrote {combined_xml_file}')
 
 
