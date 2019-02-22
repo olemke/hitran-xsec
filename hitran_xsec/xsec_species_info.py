@@ -4,13 +4,16 @@ XSEC_SPECIES_INFO = {
     # Alcohols, ethers and other oxygenated hydrocarbons
 
     # Bromocarbons, Hydrobromocarbons, and Halons
-    'CBrClF2': {  # no air broadening, only N2
+    'Halon-1211': {  # no air broadening, only N2
+        'altname': 'CBrClF2',
         'rfmip': 'halon1211_GM',
     },
-    'CBrF3': {  # no air broadening, only N2
+    'Halon-1301': {  # no air broadening, only N2
+        'altname': 'CBrF3',
         'rfmip': 'halon1301_GM',
     },
-    'CBrF2CBrF2': {
+    'Halon-2402': {
+        'altname': 'CBrF2CBrF2',
         'rfmip': 'halon2402_GM',
     },
 
@@ -23,7 +26,7 @@ XSEC_SPECIES_INFO = {
     'CH2Cl2': {  # no air broadening, only N2
         'rfmip': 'ch2cl2_GM',
     },
-    'CH3CCl3': {  # not available in Hitran
+    'CH3CCl3': {  # no air broadening, only N2
         'rfmip': 'ch3ccl3_GM',
     },
     'CHCl3': {  # not available in Hitran
@@ -63,11 +66,13 @@ XSEC_SPECIES_INFO = {
     'C4F10': {  # no air broadening, only N2
         'rfmip': 'c4f10_GM',
     },
-    'n-C5F12': {  # no air broadening, only N2
+    'C5F12': {  # no air broadening, only N2
+        'altname': 'n-C5F12',
         'arts_bands': ((500, 6500),),
         'rfmip': 'c5f12_GM',
     },
-    'n-C6F14': {  # no air broadening, only N2
+    'C6F14': {  # no air broadening, only N2
+        'altname': 'n-C6F14',
         'rfmip': 'c6f14_GM',
     },
     'C8F18': {  # no air broadening, only N2 at 0 Torr
@@ -132,27 +137,33 @@ XSEC_SPECIES_INFO = {
     'HFC-152a': {
         'rfmip': 'hfc152a_GM',
     },
-    'CF3CHFCF3': {
+    'HFC-227ea': {
+        'altname': 'CF3CHFCF3',
         'arts_bands': ((500, 6500),),  # Check first band for overlap
         'rfmip': 'hfc227ea_GM',
     },
-    'CF3CH2CF3': {
+    'HFC-236fa': {  # No usable input files
+        'altname': 'CF3CH2CF3',
         'rfmip': 'hfc236fa_GM',
     },
     'HFC-23': {
+        'altname': 'CHF3',
         'rfmip': 'hfc23_GM',
     },
-    'CHF2CH2CF3': {  # Only one profile
+    'HFC-245fa': {  # Only one profile
+        'altname': 'CHF2CH2CF3',
         'rfmip': 'hfc245fa_GM',
     },
     'HFC-32': {  # !!!!! bad fit !!!!! not enough xsecs available
         'use_average': True,
         'rfmip': 'hfc32_GM',
     },
-    'CH3CF2CH2CF3': {  # Only one profile
+    'HFC-365mfc': {  # Only one profile
+        'altname': 'CH3CF2CH2CF3',
         'rfmip': 'hfc365mfc_GM',
     },
-    'CF3CHFCHFCF2CF3': {  # not available in Hitran
+    'HFC-43-10mee': {  # not available in Hitran
+        'altname': 'CF3CHFCHFCF2CF3',
         'rfmip': 'hfc4310mee_GM',
     },
 
