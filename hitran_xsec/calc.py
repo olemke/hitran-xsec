@@ -90,9 +90,10 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
 
     # Scatter plot of available cross section data files
     plotfile = os.path.join(output_dir, 'xsec_datasets.pdf')
-    plt.figure()
+    fig = plt.figure()
     plot_available_xsecs(xfi, title=species)
     plt.savefig(plotfile)
+    plt.close(fig)
     logger.info(f'Wrote {plotfile}')
 
     rms_file = os.path.join(output_dir, 'xsec_rms.json')
@@ -135,23 +136,26 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
     logger.info(f'Wrote {xml_file}')
 
     plotfile = os.path.join(output_dir, 'xsec_bands.pdf')
-    plt.figure()
+    fig = plt.figure()
     plot_xsec_records(xsec_records)
     plt.savefig(plotfile)
+    plt.close(fig)
     logger.info(f'Wrote {plotfile}')
 
     if rms_result:
         plotfile = os.path.join(output_dir, 'xsec_scatter.pdf')
-        plt.figure()
+        fig = plt.figure()
         scatter_plot_by_pressure_difference_per_band(xfi, rms_result,
                                                      outliers=False)
         plt.savefig(plotfile)
+        plt.close(fig)
         logger.info(f'Wrote {plotfile}')
 
         plotfile = os.path.join(output_dir, 'xsec_scatter_temp.pdf')
-        plt.figure()
+        fig = plt.figure()
         scatter_plot_by_temperature(xfi, rms_result)
         plt.savefig(plotfile)
+        plt.close(fig)
         logger.info(f'Wrote {plotfile}')
 
 
