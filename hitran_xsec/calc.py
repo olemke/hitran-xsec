@@ -5,15 +5,15 @@ import logging
 import os
 
 import matplotlib.pyplot as plt
-import numpy as np
 import typhon.arts.xml as axml
 
-from .fit import gen_arts
+from .fit import gen_arts, calc_fwhm_and_pressure_difference, do_rms_fit
 from .plotting import (plot_available_xsecs,
                        plot_xsec_records,
                        scatter_plot_by_pressure_difference_per_band,
                        scatter_plot_by_temperature,
-                       generate_rms_and_spectrum_plots, temperature_fit)
+                       generate_rms_and_spectrum_plots, temperature_fit,
+                       scatter_plot_by_pressure_difference)
 from .xsec import (XsecFileIndex, XsecError, save_rms_data, load_rms_data,
                    optimize_xsec_multi)
 
@@ -166,19 +166,27 @@ def calc_average_coeffs(species, outdir, **_):
     averaged_species_xml_file = os.path.join(outdir, 'cfc_averaged_species.xml')
     all_species = []
     for s in species:
-        cfc_file = os.path.join(outdir, s, 'cfc.xml')
+        rms_file = os.path.join(outdir, s, 'xsec_rms.json')
         try:
-            data = axml.load(cfc_file)
+            data = load_rms_data(rms_file)
         except FileNotFoundError:
-            logger.warning(f"No xml file found for species {s}, ignoring")
+            logger.warning(f"No RMS file found for species {s}, ignoring")
         else:
-            all_species.append(data)
+            all_species.extend(data)
             logger.info(f'Added {s}')
 
-    avg_coeffs = np.sum(
-        [x[0].coeffs for x in all_species], axis=0) / len(all_species)
-    avg_species = [x[0].species for x in all_species]
+    plotfile = os.path.join(outdir, 'xsec_avg_scatter.pdf')
+    fig = plt.figure()
+    scatter_plot_by_pressure_difference(all_species, species=",".join(species),
+                                        outliers=False)
+    plt.savefig(plotfile)
+    plt.close(fig)
+    logger.info(f'Wrote {plotfile}')
+
+    fwhm, pressure_diff = calc_fwhm_and_pressure_difference(all_species)
+    avg_coeffs, _, _ = do_rms_fit(fwhm, pressure_diff)
+
     axml.save(avg_coeffs, averaged_coeffs_xml_file)
     logger.info(f'Wrote {averaged_coeffs_xml_file}')
-    axml.save(avg_species, averaged_species_xml_file)
+    axml.save(species, averaged_species_xml_file)
     logger.info(f'Wrote {averaged_species_xml_file}')
