@@ -144,8 +144,8 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
         tfit_slope = [np.array(x) for x in tfit_slope]
         tfit_intersect = [np.array(x) for x in tfit_intersect]
     else:
-        tfit_slope = [0.]
-        tfit_intersect = [0.]
+        tfit_slope = [np.array(())]
+        tfit_intersect = [np.array(())]
 
     if not len(xsec_ref):
         raise XsecError('No matching xsecs found.')
