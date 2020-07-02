@@ -152,8 +152,12 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
 
     logger.info(f'{len(xsec_ref)} profiles selected: '
                 f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
-    if not rmsoutput or ('use_average' in XSEC_SPECIES_INFO[species_name]
-                         and XSEC_SPECIES_INFO[species_name]['use_average']):
+    if not rmsoutput or (
+            "use_average" in XSEC_SPECIES_INFO[species_name]
+            and XSEC_SPECIES_INFO[species_name]["use_average"]
+            and isinstance(averaged_coeffs, np.ndarray)
+            and len(averaged_coeffs)
+    ):
         logger.info(f'Using averaged coefficients for {species_name}')
         popt = averaged_coeffs
     else:
