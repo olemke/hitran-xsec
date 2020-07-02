@@ -128,7 +128,8 @@ def calc_broadening(species, xscdir, outdir, ignore_rms=False, rms_plots=False,
     try:
         xsec_records = (
             gen_arts(xfi, rms_result, tfit_result, averaged_coeffs=avg_coeffs),)
-    except XsecError:
+    except XsecError as e:
+        logger.warning(str(e))
         logger.warning(f'No RMS calculation possible for {species}')
         return
 
