@@ -187,6 +187,7 @@ SPECIES_GROUPS = {
         'CFC-11',
         'CFC-12',
         'HFC-134a',
+        'HFC-23',
     ],
     'rfmip-names': [
         'c2f6_GM',
