@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from scipy.stats import linregress
 from typhon.arts.xsec import XsecRecord
 
-from .xsec import (XsecError, XSEC_SPECIES_INFO)
+from .xsec import XsecError, XSEC_SPECIES_INFO
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,17 @@ def func_2straights(x, x0, a, b):
 
 
 def calc_fwhm_and_pressure_difference(xsec_result):
-    fwhm = np.array([r['optimum_fwhm'] for r in xsec_result])
+    fwhm = np.array([r["optimum_fwhm"] for r in xsec_result])
     pressure_diff = np.array(
-        [r['target_pressure'] - r['ref_pressure'] for r in xsec_result])
+        [r["target_pressure"] - r["ref_pressure"] for r in xsec_result]
+    )
 
     return fwhm, pressure_diff
 
 
 def get_fwhm_and_temperature(xsec_result):
-    fwhm = np.array([r['optimum_fwhm'] for r in xsec_result])
-    temperature = np.array(
-        [r['target_temp'] for r in xsec_result])
+    fwhm = np.array([r["optimum_fwhm"] for r in xsec_result])
+    temperature = np.array([r["target_temp"] for r in xsec_result])
 
     return fwhm, temperature
 
@@ -45,16 +45,18 @@ def do_rms_fit(fwhm, pressure_diff, fit_func=func_2straights, outliers=False):
     if outliers:
         data = np.hstack((pressure_diff.reshape(-1, 1), fwhm.reshape(-1, 1)))
         from sklearn.ensemble import IsolationForest
+
         forrest = IsolationForest(contamination=0.001)
         forrest.fit(data)
         non_outliers = forrest.predict(data) != -1
     else:
-        non_outliers = np.ones_like(fwhm, dtype='bool')
+        non_outliers = np.ones_like(fwhm, dtype="bool")
     # Apriori for fitting the two lines
-    p0 = (30000., 1e6, 1e6)
+    p0 = (30000.0, 1e6, 1e6)
     # noinspection PyTypeChecker
-    popt, pcov = curve_fit(fit_func, pressure_diff[non_outliers],
-                           fwhm[non_outliers], p0=p0)
+    popt, pcov = curve_fit(
+        fit_func, pressure_diff[non_outliers], fwhm[non_outliers], p0=p0
+    )
     return popt, pcov, non_outliers
 
 
@@ -75,41 +77,47 @@ def do_temperture_fit(xsecs, xref=None):
     return fit[:, 0:2]
 
 
-def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
-             averaged_coeffs=None):
+def gen_arts(
+    xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None, averaged_coeffs=None
+):
     if not rmsoutput and (
-            not isinstance(averaged_coeffs, np.ndarray)
-            or not len(averaged_coeffs)):
-        raise XsecError('No RMS output and no averaged coefficients available.')
+        not isinstance(averaged_coeffs, np.ndarray) or not len(averaged_coeffs)
+    ):
+        raise XsecError("No RMS output and no averaged coefficients available.")
 
     # Find reference profiles for each band
     bands = xsecfileindex.cluster_by_band_and_temperature()
 
     # Convert generators to lists and sort by pressure
-    lbands = [[sorted(l, key=lambda x: x.pressure) for l in t]
-              for t in [list(b) for b in bands]]
+    lbands = [
+        [sorted(l, key=lambda x: x.pressure) for l in t]
+        for t in [list(b) for b in bands]
+    ]
 
     # Get list of temperatures in each band
     temps = [[t[0].temperature for t in b] for b in lbands]
 
     if reftemp is None:
         if tfitoutput:
-            reftemp = tfitoutput[0]['tref']
+            reftemp = tfitoutput[0]["tref"]
         else:
             reftemp = 240
 
     # Select profiles closest to reference temperature
-    mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in
-            temps]
+    mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in temps]
 
     species_name = lbands[0][0][0].species
     species = XSEC_SPECIES_INFO[species_name]
-    if 'arts_bands' in species:
-        xsec_ref = [band[index][0] for band, index in zip(lbands, mins) if
-                    (band[index][0].wmin, band[index][0].wmax) in
-                    species['arts_bands']]
-        logger.info(f"{lbands[0][0][0].species}: {len(xsec_ref)} bands out of "
-                    f"{len(lbands)} selected for ARTS.")
+    if "arts_bands" in species:
+        xsec_ref = [
+            band[index][0]
+            for band, index in zip(lbands, mins)
+            if (band[index][0].wmin, band[index][0].wmax) in species["arts_bands"]
+        ]
+        logger.info(
+            f"{lbands[0][0][0].species}: {len(xsec_ref)} bands out of "
+            f"{len(lbands)} selected for ARTS."
+        )
     else:
         xsec_ref = [band[index][0] for band, index in zip(lbands, mins)]
 
@@ -118,29 +126,37 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
         tfit_intersect = []
         tfit_reftemp = []
         for xs in xsec_ref:
-            tfit_match = [t for t in tfitoutput if
-                          np.isclose(t['wmin'], xs.wmin)
-                          and np.isclose(t['wmax'], xs.wmax)
-                          and np.abs(t['pref'] - xs.pressure) < 100]
+            tfit_match = [
+                t
+                for t in tfitoutput
+                if np.isclose(t["wmin"], xs.wmin)
+                and np.isclose(t["wmax"], xs.wmax)
+                and np.abs(t["pref"] - xs.pressure) < 100
+            ]
             if not len(tfit_match):
                 tfit_slope.append([0])
                 tfit_intersect.append([0])
                 tfit_reftemp.append([0])
-                logger.warning(f'No matching temperature fit data found '
-                               f'for {xs.species} in band '
-                               f'{xs.wmin}-{xs.wmax}')
+                logger.warning(
+                    f"No matching temperature fit data found "
+                    f"for {xs.species} in band "
+                    f"{xs.wmin}-{xs.wmax}"
+                )
             else:
                 if len(tfit_match) > 1:
                     logger.warning(
-                        f'More than one ({len(tfit_match)}) matching '
-                        f'temperature fit found for {xs.species} in band '
-                        f'{xs.wmin}-{xs.wmax}')
+                        f"More than one ({len(tfit_match)}) matching "
+                        f"temperature fit found for {xs.species} in band "
+                        f"{xs.wmin}-{xs.wmax}"
+                    )
                 tfit_match = tfit_match[0]
-                tfit_slope.append(tfit_match['slope'])
-                tfit_intersect.append(tfit_match['intersect'])
-                tfit_reftemp.append(tfit_match['tref'])
-                logger.info(f'Selected tfit @ {tfit_match["pref"]:.0f} Pa '
-                            f'for band {xs.wmin}-{xs.wmin}')
+                tfit_slope.append(tfit_match["slope"])
+                tfit_intersect.append(tfit_match["intersect"])
+                tfit_reftemp.append(tfit_match["tref"])
+                logger.info(
+                    f'Selected tfit @ {tfit_match["pref"]:.0f} Pa '
+                    f"for band {xs.wmin}-{xs.wmin}"
+                )
         tfit_slope = [np.array(x) for x in tfit_slope]
         tfit_intersect = [np.array(x) for x in tfit_intersect]
     else:
@@ -148,30 +164,31 @@ def gen_arts(xsecfileindex, rmsoutput=None, tfitoutput=None, reftemp=None,
         tfit_intersect = [np.array(())]
 
     if not len(xsec_ref):
-        raise XsecError('No matching xsecs found.')
+        raise XsecError("No matching xsecs found.")
 
-    logger.info(f'{len(xsec_ref)} profiles selected: '
-                f'{[os.path.basename(x.filename) for x in xsec_ref]}.')
+    logger.info(
+        f"{len(xsec_ref)} profiles selected: "
+        f"{[os.path.basename(x.filename) for x in xsec_ref]}."
+    )
     if not rmsoutput or (
-            "use_average" in XSEC_SPECIES_INFO[species_name]
-            and XSEC_SPECIES_INFO[species_name]["use_average"]
-            and isinstance(averaged_coeffs, np.ndarray)
-            and len(averaged_coeffs)
+        "use_average" in XSEC_SPECIES_INFO[species_name]
+        and XSEC_SPECIES_INFO[species_name]["use_average"]
+        and isinstance(averaged_coeffs, np.ndarray)
+        and len(averaged_coeffs)
     ):
-        logger.info(f'Using averaged coefficients for {species_name}')
+        logger.info(f"Using averaged coefficients for {species_name}")
         popt = averaged_coeffs
     else:
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
         popt, _, _ = do_rms_fit(fwhm, pressure_diff)
     return XsecRecord(
-        species=xsec_ref[0].species.translate(
-            str.maketrans(dict.fromkeys('-'))),
+        species=xsec_ref[0].species.translate(str.maketrans(dict.fromkeys("-"))),
         coeffs=popt,
         fmin=np.array([x.fmin for x in xsec_ref]),
         fmax=np.array([x.fmax for x in xsec_ref]),
         refpressure=np.array([x.pressure for x in xsec_ref]),
         reftemperature=np.array([x.temperature for x in xsec_ref]),
-        xsec=[x.data / 10000. for x in xsec_ref],
+        xsec=[x.data / 10000.0 for x in xsec_ref],
         tfit_slope=tfit_slope,
         tfit_intersect=tfit_intersect,
     )

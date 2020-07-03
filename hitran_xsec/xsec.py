@@ -35,6 +35,7 @@ class XsecConfig:
 
 class XsecError(RuntimeError):
     """Cross section related RuntimeError."""
+
     pass
 
 
@@ -45,40 +46,44 @@ class XsecFile:
         """Lazy-load cross section file."""
         self.filename = filename
         # noinspection PyUnusedLocal
-        rnum = r'[0-9]+\.?[0-9]*'
+        rnum = r"[0-9]+\.?[0-9]*"
         m = re.search(
-            f'(?P<species>[^_]*)_(?P<T>{rnum})K?[-_](?P<P>{rnum})(Torr)?[-_]'
-            f'(?P<wmin>{rnum})[-_](?P<wmax>{rnum})(?P<extra>_.*)?\.xsc',
-            os.path.basename(self.filename))
+            f"(?P<species>[^_]*)_(?P<T>{rnum})K?[-_](?P<P>{rnum})(Torr)?[-_]"
+            f"(?P<wmin>{rnum})[-_](?P<wmax>{rnum})(?P<extra>_.*)?\.xsc",
+            os.path.basename(self.filename),
+        )
         try:
-            self.species = m.group('species')
-            self.temperature = float(m.group('T'))
-            self.torr = float(m.group('P'))
+            self.species = m.group("species")
+            self.temperature = float(m.group("T"))
+            self.torr = float(m.group("P"))
             self.pressure = torr_to_pascal(self.torr)
-            self.wmin = float(m.group('wmin'))
-            self.wmax = float(m.group('wmax'))
+            self.wmin = float(m.group("wmin"))
+            self.wmax = float(m.group("wmax"))
             self.fmin = wavenumber2frequency(self.wmin * 100)
             self.fmax = wavenumber2frequency(self.wmax * 100)
-            self.extra = m.group('extra')
+            self.extra = m.group("extra")
             self._header = None
             self._data = None
             self._nfreq = None
         except AttributeError:
-            raise XsecError(f'Error parsing filename {filename}')
+            raise XsecError(f"Error parsing filename {filename}")
 
     def __repr__(self):
-        return 'XsecFile:' + self.filename
+        return "XsecFile:" + self.filename
 
     def __hash__(self):
-        return hash(f'{self.species}{self.pressure}{self.temperature}'
-                    f'{self.wmin}{self.wmax}')
+        return hash(
+            f"{self.species}{self.pressure}{self.temperature}" f"{self.wmin}{self.wmax}"
+        )
 
     def __eq__(self, x):
-        return (self.species == x.species
-                and self.pressure == x.pressure
-                and self.temperature == x.temperature
-                and self.wmin == x.wmin
-                and self.wmax == x.wmax)
+        return (
+            self.species == x.species
+            and self.pressure == x.pressure
+            and self.temperature == x.temperature
+            and self.wmin == x.wmin
+            and self.wmax == x.wmax
+        )
 
     def read_hitran_xsec(self):
         """Read HITRAN cross section data file."""
@@ -89,7 +94,8 @@ class XsecFile:
         with open(self.filename) as f:
             header = f.readline()
             data = np.hstack(
-                list(map(lambda l: list(map(float, l.split())), f.readlines())))
+                list(map(lambda l: list(map(float, l.split())), f.readlines()))
+            )
 
         self._header = header
         self._data = data
@@ -126,18 +132,17 @@ class XsecFileIndex:
         self.ignored_files = []
         self.failed_files = []
         if directory is not None and species is not None:
-            if 'altname' in XSEC_SPECIES_INFO[species]:
-                speciesname = XSEC_SPECIES_INFO[species]['altname']
+            if "altname" in XSEC_SPECIES_INFO[species]:
+                speciesname = XSEC_SPECIES_INFO[species]["altname"]
             else:
                 speciesname = species
 
-            for f in glob(os.path.join(directory, '*.xsc')):
+            for f in glob(os.path.join(directory, "*.xsc")):
                 try:
                     xsec_file = XsecFile(f)
                     if xsec_file.species != speciesname:
                         pass
-                    elif ignore is not None and re.match(ignore,
-                                                         xsec_file.extra):
+                    elif ignore is not None and re.match(ignore, xsec_file.extra):
                         self.ignored_files.append(f)
                     else:
                         self.files.append(xsec_file)
@@ -154,7 +159,7 @@ class XsecFileIndex:
         return obj
 
     def __repr__(self):
-        return '\n'.join([f.filename for f in self.files])
+        return "\n".join([f.filename for f in self.files])
 
     def uniquify(self):
         nfiles = len(self.files)
@@ -168,8 +173,10 @@ class XsecFileIndex:
             uniqfiles.append(item)
         nuniqfiles = len(uniqfiles)
         if nuniqfiles < nfiles:
-            logger.info(f'Removed {nfiles - nuniqfiles} duplicate data files '
-                        f'for {self.files[0].species}')
+            logger.info(
+                f"Removed {nfiles - nuniqfiles} duplicate data files "
+                f"for {self.files[0].species}"
+            )
             self.files = uniqfiles
 
     def find_file(self, filename):
@@ -178,16 +185,18 @@ class XsecFileIndex:
 
     def find(self, wmin=None, wmax=None, temperature=None, pressure=None):
         """Find cross sections that match the criteria."""
-        return [x for x in self.files if
-                (not wmin or x.wmin == wmin)
-                and (not wmax or x.wmax == wmax)
-                and (not temperature or x.temperature == temperature)
-                and (not pressure or x.torr == pressure)]
+        return [
+            x
+            for x in self.files
+            if (not wmin or x.wmin == wmin)
+            and (not wmax or x.wmax == wmax)
+            and (not temperature or x.temperature == temperature)
+            and (not pressure or x.torr == pressure)
+        ]
 
     def cluster_by_band(self, wgap=1):
         """Combine files for each band in a list."""
-        return _cluster2(self.files, wgap, key=lambda x: x.wmin,
-                         key2=lambda x: x.wmax)
+        return _cluster2(self.files, wgap, key=lambda x: x.wmin, key2=lambda x: x.wmax)
 
     def cluster_by_temperature(self, tgap=3):
         """Combine files for each temperature in a list."""
@@ -195,20 +204,26 @@ class XsecFileIndex:
 
     def cluster_by_band_and_pressure(self, wgap=1, pgap=100):
         """Combine files for each band and pressure in a nested list."""
-        return (_cluster2(l, pgap, key=lambda x: x.pressure)
-                for l in _cluster2(self.files, wgap, key=lambda x: x.wmin,
-                                   key2=lambda x: x.wmax))
+        return (
+            _cluster2(l, pgap, key=lambda x: x.pressure)
+            for l in _cluster2(
+                self.files, wgap, key=lambda x: x.wmin, key2=lambda x: x.wmax
+            )
+        )
 
     def cluster_by_band_and_temperature(self, wgap=1, tgap=3):
         """Combine files for each band and temperature in a nested list."""
-        return (_cluster2(l, tgap, key=lambda x: x.temperature)
-                for l in _cluster2(self.files, wgap, key=lambda x: x.wmin,
-                                   key2=lambda x: x.wmax))
+        return (
+            _cluster2(l, tgap, key=lambda x: x.temperature)
+            for l in _cluster2(
+                self.files, wgap, key=lambda x: x.wmin, key2=lambda x: x.wmax
+            )
+        )
 
 
 def torr_to_pascal(torr):
     """Convert Torr to Pascal."""
-    return torr * 101325. / 760.
+    return torr * 101325.0 / 760.0
 
 
 def _pairify(it):
@@ -223,10 +238,12 @@ def _cluster2(iterable: Iterable, maxgap, key=lambda x: x, key2=None):
     prev = None
     group = []
     for item in sorted(
-            iterable,
-            key=lambda x: (key(x), key2(x)) if key2 is not None else key(x)):
-        if not prev or (key(item) - key(prev) <= maxgap and
-                        (not key2 or key2(item) - key2(prev) <= maxgap)):
+        iterable, key=lambda x: (key(x), key2(x)) if key2 is not None else key(x)
+    ):
+        if not prev or (
+            key(item) - key(prev) <= maxgap
+            and (not key2 or key2(item) - key2(prev) <= maxgap)
+        ):
             group.append(item)
         else:
             yield group
@@ -244,13 +261,14 @@ def run_lorentz_f(npoints, fstep, hwhm, cutoff=None):
     ret = lorentz_pdf(
         np.linspace(0, fstep * npoints, npoints, endpoint=True),
         fstep * npoints / 2,
-        hwhm)
+        hwhm,
+    )
     if cutoff is not None:
         ret = ret[ret > np.max(ret) * cutoff]
     if len(ret) > 1:
         return ret / simps(ret)
     else:
-        return np.array([1.])
+        return np.array([1.0])
 
 
 def xsec_convolve_f(xsec1: XsecFile, hwhm, convfunc, cutoff=None):
@@ -260,7 +278,7 @@ def xsec_convolve_f(xsec1: XsecFile, hwhm, convfunc, cutoff=None):
     conv_f = convfunc(int(xsec1.nfreq), fstep, hwhm, cutoff=cutoff)
     width = len(conv_f)
     xsec_conv = deepcopy(xsec1)
-    xsec_conv.data = fftconvolve(xsec1.data, conv_f, 'same')
+    xsec_conv.data = fftconvolve(xsec1.data, conv_f, "same")
 
     return xsec_conv, conv_f, width
 
@@ -272,24 +290,32 @@ def xsec_convolve_simple(xsec1: XsecFile, hwhm, cutoff=None):
 
 def xsec_convolve_simple_dict(xsec1: dict, hwhm, cutoff=None):
     """Convolve cross section data with the given function."""
-    fstep = (xsec1['fmax'] - xsec1['fmin']) / xsec1['nfreq']
+    fstep = (xsec1["fmax"] - xsec1["fmin"]) / xsec1["nfreq"]
 
-    conv_f = run_lorentz_f(int(xsec1['nfreq']), fstep, hwhm, cutoff=cutoff)
+    conv_f = run_lorentz_f(int(xsec1["nfreq"]), fstep, hwhm, cutoff=cutoff)
     width = len(conv_f)
     xsec_conv = deepcopy(xsec1)
-    xsec_conv['data'] = fftconvolve(xsec1['data'], conv_f, 'same')
+    xsec_conv["data"] = fftconvolve(xsec1["data"], conv_f, "same")
 
     return xsec_conv, conv_f, width
 
 
 def calc_xsec_rms(xsec1: XsecFile, xsec2: XsecFile):
     """Calculate RMS between two cross sections."""
-    return np.sqrt(np.mean(np.square(
-        xsec1.data / np.sum(xsec1.data) - xsec2.data / np.sum(xsec2.data))))
+    return np.sqrt(
+        np.mean(
+            np.square(xsec1.data / np.sum(xsec1.data) - xsec2.data / np.sum(xsec2.data))
+        )
+    )
 
 
-def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
-                  fwhm_min=0.01e9, fwhm_max=20.01e9, fwhm_nsteps=1000):
+def optimize_xsec(
+    xsec_low: XsecFile,
+    xsec_high: XsecFile,
+    fwhm_min=0.01e9,
+    fwhm_max=20.01e9,
+    fwhm_nsteps=1000,
+):
     """Find the broadening width with lowest RMS."""
 
     xsec_name = (
@@ -298,7 +324,8 @@ def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
         f"-{xsec_low.wmax:.0f}_"
         f"{xsec_low.temperature:.1f}K_"
         f"{xsec_low.pressure:.0f}P_{xsec_high.temperature:.1f}K_"
-        f"{xsec_high.pressure:.0f}P")
+        f"{xsec_high.pressure:.0f}P"
+    )
     logger.info(f"Calc {xsec_name}")
 
     rms = np.zeros((fwhm_nsteps,))
@@ -308,30 +335,32 @@ def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
     fgrid_high = np.linspace(xsec_high.fmin, xsec_high.fmax, xsec_high.nfreq)
 
     if xsec_low == xsec_high:
-        logger.info(f'{xsec_high} and {xsec_low} are identical. Ignoring.')
+        logger.info(f"{xsec_high} and {xsec_low} are identical. Ignoring.")
         return None
 
     if len(xsec_high.data) != len(fgrid_high):
-        logger.error(f"Size mismatch in data (skipping): nfreq: "
-                     f"{xsec_high.nfreq} "
-                     f"datasize: {len(xsec_high.data)} "
-                     f"header: {xsec_high.header}")
+        logger.error(
+            f"Size mismatch in data (skipping): nfreq: "
+            f"{xsec_high.nfreq} "
+            f"datasize: {len(xsec_high.data)} "
+            f"header: {xsec_high.header}"
+        )
         return None
 
     for i, fwhm in enumerate(fwhms):
         # logger.info(f"Calculating {fwhm/1e9:.3f} for {xsec_name}")
-        xsec_conv, conv, width = xsec_convolve_f(xsec_low, fwhm / 2,
-                                                 run_lorentz_f,
-                                                 LORENTZ_CUTOFF)
+        xsec_conv, conv, width = xsec_convolve_f(
+            xsec_low, fwhm / 2, run_lorentz_f, LORENTZ_CUTOFF
+        )
         # logger.info(f"Calculating done {fwhm/1e9:.3f} for {xsec_name}")
         if width < 10:
             logger.warning(
                 f"Very few ({width}) points used in Lorentz function for "
-                f"{xsec_name} at FWHM {fwhm / 1e9:.2} GHz.")
+                f"{xsec_name} at FWHM {fwhm / 1e9:.2} GHz."
+            )
 
         xsec_high_interp = deepcopy(xsec_conv)
-        xsec_high_interp.data = np.interp(fgrid_conv, fgrid_high,
-                                          xsec_high.data)
+        xsec_high_interp.data = np.interp(fgrid_conv, fgrid_high, xsec_high.data)
 
         rms[i] = calc_xsec_rms(xsec_conv, xsec_high_interp)
 
@@ -341,23 +370,23 @@ def optimize_xsec(xsec_low: XsecFile, xsec_high: XsecFile,
     logger.info(f"Done {xsec_name}")
 
     return {
-        'ref_pressure': float(xsec_low.pressure),
-        'target_pressure': float(xsec_high.pressure),
-        'ref_filename': xsec_low.filename,
-        'target_filename': xsec_high.filename,
-        'ref_temp': float(xsec_low.temperature),
-        'target_temp': float(xsec_high.temperature),
-        'wmin': float(xsec_low.wmin),
-        'wmax': float(xsec_low.wmax),
-        'fmin': float(xsec_low.fmin),
-        'fmax': float(xsec_low.fmax),
-        'nfreq': int(xsec_low.nfreq),
-        'optimum_fwhm': rms_optimum_fwhm,
-        'optimum_fwhm_index': int(rms_optimum_fwhm_index),
-        'fwhm_min': fwhm_min,
-        'fwhm_max': fwhm_max,
-        'fwhm_nsteps': int(fwhm_nsteps),
-        'rms': rms.tolist(),
+        "ref_pressure": float(xsec_low.pressure),
+        "target_pressure": float(xsec_high.pressure),
+        "ref_filename": xsec_low.filename,
+        "target_filename": xsec_high.filename,
+        "ref_temp": float(xsec_low.temperature),
+        "target_temp": float(xsec_high.temperature),
+        "wmin": float(xsec_low.wmin),
+        "wmax": float(xsec_low.wmax),
+        "fmin": float(xsec_low.fmin),
+        "fmax": float(xsec_low.fmax),
+        "nfreq": int(xsec_low.nfreq),
+        "optimum_fwhm": rms_optimum_fwhm,
+        "optimum_fwhm_index": int(rms_optimum_fwhm_index),
+        "fwhm_min": fwhm_min,
+        "fwhm_max": fwhm_max,
+        "fwhm_nsteps": int(fwhm_nsteps),
+        "rms": rms.tolist(),
     }
 
 
@@ -371,13 +400,16 @@ def build_pairs_with_lowest_pressure(iterable: Iterable):
             xsec_list = sorted(t, key=lambda x: x.pressure)
             xsec_no_p0 = list(filter(lambda x: x.pressure != 0, xsec_list))
             if len(xsec_no_p0) > 1:
-                yield from ((xsec_no_p0[0], xsec2) for xsec2 in
-                            itertools.islice(xsec_no_p0, 1, len(xsec_no_p0)))
+                yield from (
+                    (xsec_no_p0[0], xsec2)
+                    for xsec2 in itertools.islice(xsec_no_p0, 1, len(xsec_no_p0))
+                )
             else:
-                logger.warning(f'Not enough xsecs for {xsec_list[0].species} '
-                               f'at temperature {xsec_list[0].temperature} in '
-                               f'band {xsec_list[0].wmin} - {xsec_list[0].wmax}'
-                               )
+                logger.warning(
+                    f"Not enough xsecs for {xsec_list[0].species} "
+                    f"at temperature {xsec_list[0].temperature} in "
+                    f"band {xsec_list[0].wmin} - {xsec_list[0].wmax}"
+                )
 
 
 def optimize_xsec_multi(xsecfileindex: XsecFileIndex, processes=None):
@@ -397,7 +429,7 @@ def optimize_xsec_multi(xsecfileindex: XsecFileIndex, processes=None):
 
 def save_rms_data(filename, results):
     """Save calculated RMS data for cross sections to JSON file."""
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         json.dump(results, f)
 
 
