@@ -98,10 +98,7 @@ def gen_arts(
     temps = [[t[0].temperature for t in b] for b in lbands]
 
     if reftemp is None:
-        if tfitoutput:
-            reftemp = tfitoutput[0]["tref"]
-        else:
-            reftemp = 240
+        reftemp = 240
 
     # Select profiles closest to reference temperature
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in temps]
