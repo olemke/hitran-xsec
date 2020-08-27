@@ -24,6 +24,7 @@ from .xsec import (
     XsecFile,
     XsecFileIndex,
     xsec_config,
+    _cluster2,
 )
 
 logger = logging.getLogger(__name__)
@@ -373,7 +374,11 @@ def plot_temperature_differences(tpressure: List[XsecFile], t0=None, fit=None, a
 
 def temperature_fit(xsec_by_pressure: List[XsecFile], output_dir, title=None, tref=230):
     tpressure = sorted(xsec_by_pressure, key=lambda x: x.temperature)
-    tpressure = [t for t in tpressure if t.nfreq == tpressure[0].nfreq]
+    tpressure = sorted(
+        _cluster2(tpressure, 0, key=lambda x: x.nfreq),
+        key=lambda x: len(x),
+        reverse=True,
+    )[0]
 
     tfit = {}
     min_nt = 3
