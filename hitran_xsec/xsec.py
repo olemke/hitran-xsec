@@ -226,6 +226,11 @@ def torr_to_pascal(torr):
     return torr * 101325.0 / 760.0
 
 
+def pascal_to_torr(pascal):
+    """Convert Pascal to Torr."""
+    return pascal / 101325.0 * 760.0
+
+
 def _pairify(it):
     """Build pairs."""
     it0, it1 = itertools.tee(it, 2)
