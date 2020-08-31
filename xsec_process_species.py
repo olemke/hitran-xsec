@@ -11,6 +11,8 @@ from hitran_xsec import (
     calc_temperature_correction,
     combine_data_for_arts,
     calc_average_coeffs,
+    create_data_overview,
+    run_analysis,
     SPECIES_GROUPS,
     XSEC_SPECIES_INFO,
     xsec_config,
@@ -105,6 +107,29 @@ def add_arts_parser_args(subparsers):
     )
 
 
+def add_overview_parser_args(subparsers):
+    """ARTS export command parser"""
+    subparser = subparsers.add_parser("overview", help="Create overview of xsec data.")
+    subparser.set_defaults(command="overview")
+    subparser.set_defaults(execute=create_data_overview)
+    subparser.set_defaults(species=[])
+
+
+def add_analysis_parser_args(subparsers):
+    """ARTS export command parser"""
+    subparser = subparsers.add_parser("analysis", help="Analysis of xsec data.")
+    subparser.set_defaults(command="analysis")
+    subparser.set_defaults(execute=run_analysis)
+    subparser.set_defaults(species=[])
+
+    subparser.add_argument(
+        "species",
+        metavar="SPECIES",
+        nargs="+",
+        help="Name of species to process. " 'Pass "rfmip" for all RFMIP species.',
+    )
+
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -140,6 +165,8 @@ def parse_args():
     add_tfit_parser_args(subparsers)
     add_average_parser_args(subparsers)
     add_arts_parser_args(subparsers)
+    add_overview_parser_args(subparsers)
+    add_analysis_parser_args(subparsers)
 
     return parser.parse_args()
 
@@ -165,8 +192,10 @@ def main():
                 f"Unknown xsec species {s}. " "Not found in XSEC_SPECIES_INFO."
             )
 
-    if args.command in ("arts", "average"):
+    if args.command in ("arts", "average", "analysis"):
         args.species = species
+        args.execute(**vars(args))
+    elif args.command in ("overview"):
         args.execute(**vars(args))
     elif args.command in ("tfit"):
         with mp.Pool(processes=xsec_config.nprocesses) as pool:
