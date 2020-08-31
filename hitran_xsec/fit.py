@@ -97,14 +97,18 @@ def gen_arts(
     # Get list of temperatures in each band
     temps = [[t[0].temperature for t in b] for b in lbands]
 
+    species_name = lbands[0][0][0].species
+    species = XSEC_SPECIES_INFO[species_name]
+
     if reftemp is None:
-        reftemp = 240
+        if "reftemp" in species:
+            reftemp = species["reftemp"]
+        else:
+            reftemp = 270
 
     # Select profiles closest to reference temperature
     mins = [tlist.index(min(tlist, key=lambda x: abs(x - reftemp))) for tlist in temps]
 
-    species_name = lbands[0][0][0].species
-    species = XSEC_SPECIES_INFO[species_name]
     if "arts_bands" in species:
         xsec_ref = [
             band[index][0]
@@ -147,13 +151,27 @@ def gen_arts(
                         f"{xs.wmin}-{xs.wmax}"
                     )
                 tfit_match = tfit_match[0]
-                tfit_slope.append(tfit_match["slope"])
-                tfit_intersect.append(tfit_match["intersect"])
-                tfit_reftemp.append(tfit_match["tref"])
-                logger.info(
-                    f'Selected tfit @ {tfit_match["pref"]:.0f} Pa '
-                    f"for band {xs.wmin}-{xs.wmin}"
-                )
+                if len(tfit_match["slope"]) != len(xs.data):
+                    logger.error(
+                        f"Length mismatch ({len(tfit_match['slope'])}) between "
+                        f"tfit @ {tfit_match['tref']} and xsec for {xs.species} ({len(xs.data)}) in band {xs.wmin}-{xs.wmax}. "
+                    )
+                    logger.warning(
+                        f"No matching temperature fit data found "
+                        f"for {xs.species} in band "
+                        f"{xs.wmin}-{xs.wmax}"
+                    )
+                    tfit_slope.append([0])
+                    tfit_intersect.append([0])
+                    tfit_reftemp.append([0])
+                else:
+                    tfit_slope.append(tfit_match["slope"])
+                    tfit_intersect.append(tfit_match["intersect"])
+                    tfit_reftemp.append(tfit_match["tref"])
+                    logger.info(
+                        f'Selected tfit @ {tfit_match["pref"]:.0f} Pa @ {tfit_match["tref"]:.1f} K'
+                        f"for band {xs.wmin}-{xs.wmax} @ {xs.temperature:.1f} K"
+                    )
         tfit_slope = [np.array(x) for x in tfit_slope]
         tfit_intersect = [np.array(x) for x in tfit_intersect]
     else:
@@ -178,6 +196,7 @@ def gen_arts(
     else:
         fwhm, pressure_diff = calc_fwhm_and_pressure_difference(rmsoutput)
         popt, _, _ = do_rms_fit(fwhm, pressure_diff)
+
     return XsecRecord(
         species=xsec_ref[0].species.translate(str.maketrans(dict.fromkeys("-"))),
         coeffs=popt,
