@@ -6,23 +6,27 @@ XSEC_SPECIES_INFO = {
     "Halon-1211": {  # no air broadening, only N2
         "altname": "CBrClF2",
         "rfmip": "halon1211_GM",
+        "reftemp": 300,
     },
     "Halon-1301": {  # no air broadening, only N2
         "altname": "CBrF3",
         "rfmip": "halon1301_GM",
+        "reftemp": 300,
     },
-    "Halon-2402": {"altname": "CBrF2CBrF2", "rfmip": "halon2402_GM",},
+    "Halon-2402": {"altname": "CBrF2CBrF2", "rfmip": "halon2402_GM", "reftemp": 300,},
     # Chlorocarbons and Hydrochlorocarbons
     "CCl4": {  # +++++ fit ok +++++, use only band 700-860
         "active": True,
         "arts_bands": ((700, 860),),
         "rfmip": "carbon_tetrachloride_GM",
+        "reftemp": 250,
     },
-    "CH2Cl2": {"rfmip": "ch2cl2_GM",},  # no air broadening, only N2
-    "CH3CCl3": {"rfmip": "ch3ccl3_GM",},  # no air broadening, only N2
+    "CH2Cl2": {"rfmip": "ch2cl2_GM", "reftemp": 300,},  # no air broadening, only N2
+    "CH3CCl3": {"rfmip": "ch3ccl3_GM", "reftemp": 300,},  # no air broadening, only N2
     "CHCl3": {  # not available in Hitran
         "arts_bands": ((580, 7200),),
         "rfmip": "chcl3_GM",
+        "reftemp": 300,
     },
     # Chlorofluorocarbons (CFCs)
     "CFC-11": {"active": True, "rfmip": "cfc11_GM",},  # +++++ fit ok +++++
@@ -35,28 +39,36 @@ XSEC_SPECIES_INFO = {
         "use_average": True,
         "arts_bands": ((500, 6500),),
         "rfmip": "c2f6_GM",
+        "reftemp": 300,
     },
-    "C3F8": {"rfmip": "c3f8_GM",},  # no air broadening, only N2
-    "C4F10": {"rfmip": "c4f10_GM",},  # no air broadening, only N2
+    "C3F8": {"rfmip": "c3f8_GM", "reftemp": 300,},  # no air broadening, only N2
+    "C4F10": {"rfmip": "c4f10_GM", "reftemp": 300,},  # no air broadening, only N2
     "C5F12": {  # no air broadening, only N2
         "altname": "n-C5F12",
         "arts_bands": ((500, 6500),),
         "rfmip": "c5f12_GM",
+        "reftemp": 300,
     },
     "C6F14": {"altname": "n-C6F14", "rfmip": "c6f14_GM",},  # no air broadening, only N2
     "C8F18": {"rfmip": "c8f18_GM",},  # no air broadening, only N2 at 0 Torr
     "c-C4F8": {  # only data for 0 Torr
         "arts_bands": ((550, 6500),),
         "rfmip": "c_c4f8_GM",
+        "reftemp": 300,
     },
     "CF4": {  # +++++ fit ok +++++
         "active": True,
         "arts_bands": ((1250, 1290),),
         "rfmip": "cf4_GM",
     },
-    "NF3": {"rfmip": "nf3_GM",},  # no air broadening, only N2
-    "SF6": {"use_average": True, "arts_bands": ((560, 6500),), "rfmip": "sf6_GM",},
-    "SO2F2": {"rfmip": "so2f2_GM",},  # no air broadening, only N2
+    "NF3": {"rfmip": "nf3_GM", "reftemp": 300,},  # no air broadening, only N2
+    "SF6": {
+        "use_average": True,
+        "arts_bands": ((560, 6500),),
+        "rfmip": "sf6_GM",
+        "reftemp": 300,
+    },
+    "SO2F2": {"rfmip": "so2f2_GM", "reftemp": 300,},  # no air broadening, only N2
     # Halogenated Alcohols and Ethers
     # Hydrocarbons
     # Hydrochlorofluorocarbons (HCFCs)
@@ -69,6 +81,7 @@ XSEC_SPECIES_INFO = {
         "use_average": True,
         "arts_bands": ((760, 860), (1060, 1210), (1275, 1380),),
         "rfmip": "hcfc22_GM",
+        "reftemp": 210,
     },
     # Hydrofluorocarbons (HFCs)
     "HFC-125": {
@@ -81,6 +94,7 @@ XSEC_SPECIES_INFO = {
         "active": True,
         "arts_bands": ((750, 1600),),
         "rfmip": "hfc134a_GM",
+        "reftemp": 220,
     },
     "HFC-143a": {  # not enough xsecs available
         "use_average": True,
@@ -97,7 +111,7 @@ XSEC_SPECIES_INFO = {
         "altname": "CF3CH2CF3",
         "rfmip": "hfc236fa_GM",
     },
-    "HFC-23": {"altname": "CHF3", "rfmip": "hfc23_GM",},
+    "HFC-23": {"altname": "CHF3", "rfmip": "hfc23_GM", "reftemp": 230,},
     "HFC-245fa": {"altname": "CHF2CH2CF3", "rfmip": "hfc245fa_GM",},  # Only one profile
     "HFC-32": {  # !!!!! bad fit !!!!! not enough xsecs available
         "use_average": True,
