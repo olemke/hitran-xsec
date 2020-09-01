@@ -123,6 +123,18 @@ def add_analysis_parser_args(subparsers):
     subparser.set_defaults(species=[])
 
     subparser.add_argument(
+        "--fig1",
+        action="store_true",
+        help="Apply and plot tfit at different tempertures.",
+    )
+
+    subparser.add_argument(
+        "--fig2",
+        action="store_true",
+        help="Plot intensity at different temperatures.",
+    )
+
+    subparser.add_argument(
         "species",
         metavar="SPECIES",
         nargs="+",

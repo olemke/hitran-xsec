@@ -1,13 +1,15 @@
 import os
 import logging
 import multiprocessing as mp
+from typing import List
 
 import numpy as np
 import matplotlib.pyplot as plt
 import typhon.arts.xml as axml
 from typhon.arts.xsec import XsecRecord
 from typhon.physics import frequency2wavenumber
-from .xsec import xsec_config
+from .xsec import xsec_config, _cluster2, XsecFile
+from .calc import prepare_data
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +75,75 @@ def check_tfit(species, output_dir, cfc_combined):
         plt.close(fig)
 
 
-def run_analysis(species, outdir, **_):
-    infile = os.path.join(outdir, "cfc_combined.xml")
-    logger.info(f"Reading {infile}")
-    cfc_combined = axml.load(infile)
+def create_cf4_temperature_plot(xscdir, output_dir):
+    species = "CF4"
+    xfi = prepare_data(xscdir, output_dir, species)
+    if not xfi.files:
+        logger.warning(f"No input files found for {species}.")
+        return
 
-    with mp.Pool(processes=xsec_config.nprocesses) as pool:
-        pool.starmap(
-            check_tfit, ((s, os.path.join(outdir, s), cfc_combined) for s in species),
-        )
+    bands = [band for band in xfi.cluster_by_band_and_pressure()]
+
+    # for b in bands:
+    b = [b for b in bands[1]]
+    xs = b[0]
+    tpressure = sorted(xs, key=lambda x: x.temperature)
+    tpressure: List[XsecFile] = sorted(
+        _cluster2(tpressure, 0, key=lambda x: x.nfreq),
+        key=lambda x: len(x),
+        reverse=True,
+    )[0]
+
+    fgrid = np.linspace(tpressure[0].wmin, tpressure[0].wmax, len(tpressure[0].data))
+
+    xmaxi = np.argmax(tpressure[0].data)
+    freqis = (xmaxi - 1400, xmaxi - 400, xmaxi - 150, xmaxi)
+
+    fig, axes = plt.subplots(len(freqis) + 1, constrained_layout=True, figsize=(8, 12))
+    fig.suptitle("CF4 temperature characteristics")
+    ax = axes[0]
+    for x in tpressure:
+        x.data = x.data / 10000
+        ax.plot(fgrid, x.data, label=f"{x.temperature:.1f}", rasterized=True, lw=1.5)
+
+    ax.set_xlim(1275, 1284)
+
+    ax.legend(fontsize="xx-small", ncol=3)
+
+    for i in range(len(freqis)):
+        ax2 = axes[i + 1]
+        freqi = freqis[i]
+        freq = fgrid[freqi]
+        ax.plot((freq, freq), (0, 1.4e-20), color="black", lw=1)
+        ax.annotate(f"({i+1})", (freq, 1.4e-20), fontsize="xx-small")
+        temps = [x.temperature for x in tpressure]
+        xsec = [x.data[freqi] for x in tpressure]
+        ax2.plot(temps, xsec, marker="x", label=f"({i+1}) {freq:.1f}")
+        ax2.legend(fontsize="xx-small")
+
+    plotdir = os.path.join(output_dir, "plots")
+    os.makedirs(plotdir, exist_ok=True)
+    plotfile = os.path.join(
+        plotdir,
+        f"{tpressure[0].species}_temp_freq_"
+        f"{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_"
+        f"{tpressure[0].pressure:.0f}P.pdf",
+    )
+    logger.info(f"Writing temperature/frequency plot {plotfile}")
+    plt.savefig(plotfile, dpi=300)
+    plt.close(fig)
+
+
+def run_analysis(species, xscdir, outdir, fig1=False, fig2=False, **_):
+    if fig1:
+        infile = os.path.join(outdir, "cfc_combined.xml")
+        logger.info(f"Reading {infile}")
+        cfc_combined = axml.load(infile)
+
+        with mp.Pool(processes=xsec_config.nprocesses) as pool:
+            pool.starmap(
+                check_tfit,
+                ((s, os.path.join(outdir, s), cfc_combined) for s in species),
+            )
+    if fig2:
+        create_cf4_temperature_plot(xscdir, outdir)
