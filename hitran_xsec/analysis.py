@@ -64,8 +64,9 @@ def check_tfit(species, output_dir, cfc_combined):
             ax.plot(fgrid, x, label=f"{t}", rasterized=True)
         if np.any(xsec.xsec[i] < 0):
             logger.warning(
-                f"{species} contains {np.sum(xsec.xsec[i] < 0)} negative xsecs in ref band "
-                f"{wmin:.0f}-{wmax:.0f} @ {t:.0f}K"
+                f"{species} contains {np.sum(xsec.xsec[i] < 0)} "
+                "negative xsecs in ref band "
+                f"{wmin:.0f}-{wmax:.0f} @ {xsec.reftemperature:.0f}K"
             )
 
         ax.plot(
@@ -93,10 +94,10 @@ def create_cf4_temperature_plot(xscdir, output_dir):
     # for b in bands:
     b = [b for b in bands[1]]
     xs = b[0]
-    tpressure = sorted(xs, key=lambda x: x.temperature)
+    tpressure = sorted(xs, key=lambda t: t.temperature)
     tpressure: List[XsecFile] = sorted(
-        _cluster2(tpressure, 0, key=lambda x: x.nfreq),
-        key=lambda x: len(x),
+        _cluster2(tpressure, 0, key=lambda n: n.nfreq),
+        key=lambda n: len(n),
         reverse=True,
     )[0]
 
@@ -164,8 +165,8 @@ def create_zoom_plot(
         borderpad=0,
     )
 
-    cmm = cmap2rgba('material', 20)
-    cmq = cmap2rgba('qualitative1', 7)
+    cmm = cmap2rgba("material", 20)
+    cmq = cmap2rgba("qualitative1", 7)
     cols = [cmq[1], cmq[4], cmq[2]]
     ax.set_prop_cycle(color=cols)
     axins.set_prop_cycle(color=cols)
