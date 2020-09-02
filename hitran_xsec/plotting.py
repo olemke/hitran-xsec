@@ -155,6 +155,8 @@ def plot_xsec(xsec: XsecFile, ax=None, **kwargs):
 
     if isinstance(xsec, XsecFile):
         pdata = {
+            "wmin": xsec.wmin,
+            "wmax": xsec.wmax,
             "fmin": xsec.fmin,
             "fmax": xsec.fmax,
             "temperature": xsec.temperature,
@@ -165,14 +167,14 @@ def plot_xsec(xsec: XsecFile, ax=None, **kwargs):
     else:
         pdata = xsec
 
-    fgrid = np.linspace(pdata["fmin"], pdata["fmax"], pdata["nfreq"])
+    fgrid = np.linspace(pdata["wmin"], pdata["wmax"], pdata["nfreq"])
 
     if kwargs is None:
         kwargs = {}
 
     if "label" not in kwargs:
         kwargs["label"] = (
-            f"{pdata['temperature']:.0f} K, " f"{pdata['pressure']:.0f} Pa"
+            f"{pdata['temperature']:.0f} K, " f"{pdata['pressure']/100:.0f} hPa"
         )
 
     ax.plot(fgrid, pdata["data"] / 10000.0, **kwargs)  # Convert to m^2
