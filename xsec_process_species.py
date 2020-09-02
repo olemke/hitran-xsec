@@ -131,7 +131,13 @@ def add_analysis_parser_args(subparsers):
     subparser.add_argument(
         "--fig2",
         action="store_true",
-        help="Plot intensity at different temperatures.",
+        help="Plot intensity at different temperatures for CF4.",
+    )
+
+    subparser.add_argument(
+        "--fig3",
+        action="store_true",
+        help="Plot CFC-12 spectrum with zoom-in.",
     )
 
     subparser.add_argument(
