@@ -30,19 +30,39 @@ from .xsec import (
 logger = logging.getLogger(__name__)
 
 
+def scatter_available_xsecs(ax, bands, iband, temperatures, pressures, marker="o"):
+    band = bands[iband]
+    if len(pressures):
+        ax.scatter(
+            temperatures,
+            pressures,
+            s=100 - iband / (len(bands) - 1) * 80 if len(bands) > 1 else 20,
+            label=f"{band[0].wmin}-{band[0].wmax} ({len(band)})",
+            marker=marker,
+        )
+
+
 def plot_available_xsecs(xsecfileindex: XsecFileIndex, title=None, ax=None):
     """Plots the available temperatures and pressures of cross section data."""
     if ax is None:
         ax = plt.gca()
 
     bands = list(xsecfileindex.cluster_by_band())
-    bands_n = len(bands)
     for i, band in enumerate(bands):
-        ax.scatter(
-            [x.temperature for x in band],
-            [x.pressure for x in band],
-            s=50 - i / (len(bands) - 1) * 40 if bands_n > 1 else 20,
-            label=f"{band[0].wmin}-{band[0].wmax} ({len(bands[i])})",
+        scatter_available_xsecs(
+            ax,
+            bands,
+            i,
+            [x.temperature for x in band if x.pressure > 0],
+            [x.pressure for x in band if x.pressure > 0],
+        )
+        scatter_available_xsecs(
+            ax,
+            bands,
+            i,
+            [x.temperature for x in band if x.pressure == 0],
+            [101300 for x in band if x.pressure == 0],
+            "s",
         )
     ax.yaxis.set_major_formatter(HectoPascalFormatter())
     ax.invert_yaxis()
