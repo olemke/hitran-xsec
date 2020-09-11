@@ -2,6 +2,7 @@ import os
 import logging
 import multiprocessing as mp
 from typing import List
+from copy import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +16,9 @@ from typhon.plots import cmap2rgba
 from .xsec import xsec_config, _cluster2, XsecFile, xsec_convolve_f, run_lorentz_f
 from .calc import prepare_data
 from .plotting import plot_xsec
-from .fit import func_2straights
+from .fit import func_2straights, apply_tfit, apply_pressure_fit
+
+# from pyarts.workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +85,9 @@ def check_tfit(species, output_dir, cfc_combined):
         plt.close(fig)
 
 
-def create_cf4_temperature_plot(xscdir, output_dir):
+def create_cf4_temperature_plot(
+    xscdir, output_dir, ylim=None, narrow=True, linear=False, logspec=False
+):
     species = "CF4"
     xfi = prepare_data(xscdir, output_dir, species)
     if not xfi.files:
@@ -94,47 +99,109 @@ def create_cf4_temperature_plot(xscdir, output_dir):
     # for b in bands:
     b = [b for b in bands[1]]
     xs = b[0]
-    tpressure = sorted(xs, key=lambda t: t.temperature)
-    tpressure: List[XsecFile] = sorted(
-        _cluster2(tpressure, 0, key=lambda n: n.nfreq),
+    xsec_tp = sorted(xs, key=lambda t: t.temperature)
+    xsec_tp: List[XsecFile] = sorted(
+        _cluster2(xsec_tp, 0, key=lambda n: n.nfreq),
         key=lambda n: len(n),
         reverse=True,
     )[0]
 
-    fgrid = np.linspace(tpressure[0].wmin, tpressure[0].wmax, len(tpressure[0].data))
+    refi = 2
+    ref = xsec_tp[refi]
+    xsec_ref = ref.data
+    fgrid = np.linspace(ref.wmin, ref.wmax, len(ref.data))
 
-    xmaxi = np.argmax(tpressure[0].data)
-    freqis = (xmaxi - 1400, xmaxi - 400, xmaxi - 150, xmaxi)
+    xmaxi = np.argmax(xsec_ref)
+    if narrow:
+        centerf = 5939
+        freqis = [centerf + offset for offset in range(-2, 3)]
+    else:
+        # freqis = (np.argmax(xsec_ref[800:900])+825, xmaxi - 1400, xmaxi - 400, xmaxi - 150, xmaxi)
+        freqis = (xmaxi - 1400, xmaxi - 400, xmaxi - 150, xmaxi)
 
-    fig, axes = plt.subplots(len(freqis) + 1, constrained_layout=True, figsize=(8, 12))
-    fig.suptitle("CF4 temperature characteristics")
+    fig, axes = plt.subplots(3, constrained_layout=True, figsize=(8, 8))
     ax = axes[0]
-    for x in tpressure:
-        x.data = x.data / 10000
+    for x in xsec_tp:
+        ax.plot(
+            fgrid, x.data / 10000, label=f"{x.temperature:.1f}", rasterized=True, lw=1.5
+        )
+    legend = ax.legend(
+        title="CF4 $T_{ref}$=" + f"{ref.temperature:.1f}", fontsize="xx-small", ncol=3
+    )
+    plt.setp(legend.get_title(), fontsize="x-small")
+    ax.set_ylabel("$\\sigma$")
+    ax.set_xlim(1250, 1290)
+    if logspec:
+        ax.set_yscale("log")
+
+    ax = axes[1]
+    for x in xsec_tp:
+        if linear:
+            x.data = x.data - xsec_ref
+        else:
+            x.data = np.log(x.data / xsec_ref)
         ax.plot(fgrid, x.data, label=f"{x.temperature:.1f}", rasterized=True, lw=1.5)
 
-    ax.set_xlim(1275, 1284)
+    if linear:
+        lnsigma = "$\\sf \\sigma-\\sigma_{T_{ref}}$"
+    else:
+        lnsigma = "$\\sf ln(\\sigma/\\sigma_{T_{ref}})$"
+    ax.set_ylabel(lnsigma)
+    if narrow:
+        ax.set_xlim(1280.89, 1281.21)
+    else:
+        ax.set_xlim(1250, 1290)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    else:
+        ylim = ax.get_ylim()
 
     ax.legend(fontsize="xx-small", ncol=3)
 
-    for i in range(len(freqis)):
-        ax2 = axes[i + 1]
-        freqi = freqis[i]
+    xsec_values = [
+        x.data[freqis[i]]
+        for x in xsec_tp
+        for i in range(len(freqis))
+        if not (np.isnan(x.data[freqis[i]]) or np.isinf(x.data[freqis[i]]))
+    ]
+
+    # Frequency marker lines
+    for j in range(len(freqis)):
+        freqi = freqis[j]
         freq = fgrid[freqi]
-        ax.plot((freq, freq), (0, 1.4e-20), color="black", lw=1)
-        ax.annotate(f"({i+1})", (freq, 1.4e-20), fontsize="xx-small")
-        temps = [x.temperature for x in tpressure]
-        xsec = [x.data[freqi] for x in tpressure]
-        ax2.plot(temps, xsec, marker="x", label=f"({i+1}) {freq:.1f}")
-        ax2.legend(fontsize="xx-small")
+        for ax in axes[0:2]:
+            ax.plot((freq, freq), ax.get_ylim(), zorder=1, lw=1.5)
+            ax.annotate(f"{j + 1}", (freq, ax.get_ylim()[1]), fontsize="xx-small")
+
+    # Temperature comparison plots
+    ax2 = axes[2]
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    ax2.set_prop_cycle(color=colors[len(xsec_tp) :])
+    for j in range(len(freqis)):
+        freqi = freqis[j]
+        freq = fgrid[freqi]
+        temps = np.array([x.temperature for x in xsec_tp])
+        xsec = np.array([x.data[freqi] for x in xsec_tp])
+        digs = 3 if narrow else 1
+        if linear:
+            t = temps - temps[refi]
+        else:
+            t = np.log(temps / temps[refi])
+        ax2.plot(t, xsec, marker="x", label=f"({j + 1}) {freq:.{digs}f}")
+    ax2.legend(fontsize="xx-small", ncol=2)
+    ax2.set_ylabel(lnsigma)
+    if linear:
+        ax2.set_xlabel("$\\sf T-T_{ref}$")
+    else:
+        ax2.set_xlabel("$\\sf ln(T/T_{ref})$")
 
     plotdir = os.path.join(output_dir, "plots")
     os.makedirs(plotdir, exist_ok=True)
     plotfile = os.path.join(
         plotdir,
-        f"{tpressure[0].species}_temp_freq_"
-        f"{tpressure[0].wmin:.0f}-{tpressure[0].wmax:.0f}_"
-        f"{tpressure[0].pressure:.0f}P.pdf",
+        f"{xsec_tp[0].species}_{'linear' if linear else 'ln'}_"
+        f"{xsec_tp[0].wmin:.0f}-{xsec_tp[0].wmax:.0f}_"
+        f"{xsec_tp[0].pressure:.0f}P-{'narrow' if narrow else 'wide'}.pdf",
     )
     logger.info(f"Writing temperature/frequency plot {plotfile}")
     plt.savefig(plotfile, dpi=300)
@@ -331,7 +398,171 @@ def create_cfc11_zoom_plot(xscdir, outdir):
     create_zoom_plot(outdir, xsecs, "CFC-11", zoomx, zoomy, inset_coord, xlim)
 
 
-def run_analysis(species, xscdir, outdir, fig1=False, fig2=False, fig3=False, **_):
+def compare_fit_vs_reference(xscdir, outdir):
+    species = "CFC-12"
+    bandmin = 850
+    targettemp = 296
+
+    # species = "CFC-11"
+    # bandmin = 810
+    # targettemp = 296
+
+    artsspecies = species.translate(str.maketrans(dict.fromkeys("-")))
+    infile = os.path.join(outdir, species, "cfc.xml")
+    logger.info(f"Reading {infile}")
+    cfc_combined = axml.load(infile)
+    axsec = [x for x in cfc_combined if x.species == artsspecies][0]
+    xi = 0
+
+    xfi = prepare_data(xscdir, outdir, species).files
+    ref = [
+        x
+        for x in xfi
+        if abs(x.wmin - bandmin) < 1
+        and abs(x.temperature - targettemp) < 1
+        and x.pressure > 100000
+    ]
+
+    if len(ref) != 1:
+        raise RuntimeError(f"Unexpected number ({len(ref)} of reference spectra")
+
+    ref = ref[0]
+    # ws = Workspace()
+    # ws.ReadXML(ws.hitran_xsec_data, os.path.join(outdir, species, "cfc.xml"))
+    # ws.abs_speciesSet(species=[artsspecies + "-HXSEC"])
+    # ws.VectorNLinSpace(ws.f_grid, ref.nfreq, ref.fmin, ref.fmax)
+    # ws.jacobianOff()
+    # ws.ArrayOfIndexSet(ws.abs_species_active, [0])
+    # ws.VectorSet(ws.abs_p, [ref.pressure])
+    # ws.VectorSet(ws.abs_t, [ref.temperature])
+    # ws.IndexSet(ws.abs_xsec_agenda_checked, 1)
+    # ws.abs_xsec_per_speciesInit(nlte_do=0)
+    # ws.abs_xsec_per_speciesAddHitranXsec(apply_tfit=1)
+    # fit_t = ws.abs_xsec_per_species.value[0].flatten()
+    # ws.abs_xsec_per_speciesInit(nlte_do=0)
+    # ws.abs_xsec_per_speciesAddHitranXsec(apply_tfit=0)
+    # fit_not = ws.abs_xsec_per_species.value[0].flatten()
+
+    # xf = [x for x in xfi if "CFC-11_216.5K-7.5Torr_810.0-880.0_00.xsc" in x.filename][0]
+    xf = [
+        x
+        for x in xfi
+        if abs(x.fmin - axsec.fmin[xi]) < 1e9
+        and abs(x.temperature - axsec.reftemperature[xi]) < 1
+        and abs(x.pressure - axsec.refpressure[xi]) < 1
+    ]
+    if len(xf) != 1:
+        raise RuntimeError(f"Unexpected number ({len(xf)} of reference spectra")
+    xf = xf[0]
+
+    tfit = apply_tfit(
+        ref.temperature - axsec.reftemperature[xi],
+        axsec.tfit_slope[xi],
+        axsec.tfit_intersect[xi],
+    )
+
+    fit_t = apply_pressure_fit(
+        xf.data + tfit,
+        xf.fmin,
+        xf.fmax,
+        ref.pressure - axsec.refpressure[xi],
+        axsec.coeffs,
+    )
+    fit_t /= 10000
+
+    fit_not = apply_pressure_fit(
+        xf.data, xf.fmin, xf.fmax, ref.pressure - axsec.refpressure[xi], axsec.coeffs
+    )
+    fit_not /= 10000
+
+    fig, (axes) = plt.subplots(3, 1, constrained_layout=True, figsize=(8, 10))
+    ref.data /= 10000
+    ax = axes[0]
+
+    fit = copy(ref)
+    if xf.nfreq != ref.nfreq:
+        fgrid_xf = np.linspace(xf.fmin, xf.fmax, xf.nfreq)
+        fgrid_ref = np.linspace(ref.fmin, ref.fmax, ref.nfreq)
+        fit_t = np.interp(fgrid_ref, fgrid_xf, fit_t)
+        fit_not = np.interp(fgrid_ref, fgrid_xf, fit_not)
+
+    fit.data = fit_t
+    plot_xsec(
+        fit,
+        ax,
+        rasterized=True,
+        label=f"ARTS P+T fit, original spectrum: {axsec.reftemperature[xi]:.0f} K, "
+        f"{axsec.refpressure[xi] / 100:.0f} hPa",
+        lw=3,
+    )
+
+    # fit.data = fit_not
+    fit.data = fit_not
+    plot_xsec(
+        fit,
+        ax,
+        rasterized=True,
+        label=f"ARTS P fit, original spectrum: {axsec.reftemperature[xi]:.0f} K, "
+        f"{axsec.refpressure[xi] / 100:.0f} hPa",
+        lw=2,
+    )
+
+    plot_xsec(
+        ref,
+        ax,
+        rasterized=True,
+        label=f"Reference spectrum, {ref.temperature:.0f} K, "
+        f"{ref.pressure / 100:.0f} hPa",
+        lw=1,
+    )
+
+    legend = ax.legend(title=species, fontsize="xx-small")
+    plt.setp(legend.get_title(), fontsize="x-small")
+
+    ax = axes[1]
+
+    fit = copy(ref)
+    fit.data = fit_t - ref.data
+    plot_xsec(fit, ax, rasterized=True, label="")
+
+    fit.data = fit_not - ref.data
+    plot_xsec(fit, ax, rasterized=True, label="")
+
+    legend = ax.legend(
+        title="Absolute difference $xsec_{fit}-xsec_{ref}$", fontsize="xx-small"
+    )
+    plt.setp(legend.get_title(), fontsize="x-small")
+
+    ax = axes[2]
+
+    fit = copy(ref)
+    fit.data = (fit_t - ref.data) / ref.data * 100
+    plot_xsec(fit, ax, rasterized=True, label="")
+
+    fit.data = (fit_not - ref.data) / ref.data * 100
+    plot_xsec(fit, ax, rasterized=True, label="")
+    ax.set_ylim(-0.02, 0.02)
+
+    legend = ax.legend(
+        title="% Relative change $(xsec_{fit}-xsec_{ref})/xsec_{ref}$",
+        fontsize="xx-small",
+    )
+    plt.setp(legend.get_title(), fontsize="x-small")
+
+    plotdir = os.path.join(outdir, "plots")
+    os.makedirs(plotdir, exist_ok=True)
+    plotfile = os.path.join(
+        plotdir,
+        f"{ref.species}_fit_comparison_"
+        f"{ref.wmin:.0f}-{ref.wmax:.0f}-{axsec.reftemperature[xi]}K.pdf",
+    )
+    logger.info(f"Saving plot {plotfile}")
+    plt.savefig(plotfile, dpi=300)
+
+
+def run_analysis(
+    species, xscdir, outdir, fig1=False, fig2=False, fig3=False, fig4=False, **_
+):
     if fig1:
         infile = os.path.join(outdir, "cfc_combined.xml")
         logger.info(f"Reading {infile}")
@@ -344,7 +575,15 @@ def run_analysis(species, xscdir, outdir, fig1=False, fig2=False, fig3=False, **
             )
 
     if fig2:
-        create_cf4_temperature_plot(xscdir, outdir)
+        create_cf4_temperature_plot(xscdir, outdir, narrow=True, ylim=(-0.5, 0.5))
+        create_cf4_temperature_plot(xscdir, outdir, narrow=False)
+        create_cf4_temperature_plot(
+            xscdir, outdir, narrow=True, ylim=(-0.5e-17, 0.5e-17), linear=True
+        )
+        create_cf4_temperature_plot(xscdir, outdir, narrow=False, linear=True)
 
     if fig3:
         create_cfc12_zoom_plot(xscdir, outdir)
+
+    if fig4:
+        compare_fit_vs_reference(xscdir, outdir)

@@ -141,6 +141,12 @@ def add_analysis_parser_args(subparsers):
     )
 
     subparser.add_argument(
+        "--fig4",
+        action="store_true",
+        help="Compare fit to reference spectrum at 296K/1013hPa.",
+    )
+
+    subparser.add_argument(
         "species",
         metavar="SPECIES",
         nargs="+",
