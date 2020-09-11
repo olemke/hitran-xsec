@@ -1,12 +1,13 @@
 import logging
 import os
+from collections import Iterable
 
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import linregress
 from typhon.arts.xsec import XsecRecord
 
-from .xsec import XsecError, XSEC_SPECIES_INFO
+from .xsec import XsecError, XSEC_SPECIES_INFO, xsec_convolve_f_simple, run_lorentz_f
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,20 @@ def do_temperture_fit(xsecs, xref=None):
 
     # Return slope and intersection only
     return fit[:, 0:2]
+
+
+def apply_tfit(temp_diff, slope, intersect):
+    return slope * temp_diff + intersect
+
+
+def apply_pressure_fit(xsec, fmin, fmax, pressure_diff, coeffs):
+    fwhm = func_2straights(
+        pressure_diff if pressure_diff is Iterable else [pressure_diff],
+        coeffs[0],
+        coeffs[1],
+        coeffs[2],
+    )
+    return xsec_convolve_f_simple(xsec, fmin, fmax, fwhm / 2, run_lorentz_f)
 
 
 def gen_arts(
