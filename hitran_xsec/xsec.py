@@ -278,12 +278,19 @@ def run_lorentz_f(npoints, fstep, hwhm, cutoff=None):
 
 def xsec_convolve_f(xsec1: XsecFile, hwhm, convfunc, cutoff=None):
     """Convolve cross section data with the given function."""
-    fstep = (xsec1.fmax - xsec1.fmin) / xsec1.nfreq
+    return xsec_convolve_f_simple(
+        xsec1.data, xsec1.fmin, xsec1.fmax, hwhm, convfunc, cutoff
+    )
 
-    conv_f = convfunc(int(xsec1.nfreq), fstep, hwhm, cutoff=cutoff)
+
+def xsec_convolve_f_simple(xsec, fmin, fmax, hwhm, convfunc, cutoff=None):
+    """Convolve cross section data with the given function."""
+    nf = len(xsec)
+    fstep = (fmax - fmin) / nf
+
+    conv_f = convfunc(nf, fstep, hwhm, cutoff=cutoff)
     width = len(conv_f)
-    xsec_conv = deepcopy(xsec1)
-    xsec_conv.data = fftconvolve(xsec1.data, conv_f, "same")
+    xsec_conv = fftconvolve(xsec, conv_f, "same")
 
     return xsec_conv, conv_f, width
 
